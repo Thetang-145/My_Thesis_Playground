@@ -1,6 +1,7 @@
 # Git repo
 /PL-Marker
 /SciERC
+/adapter-transformers
 
 # Dataset
 */dataset*
