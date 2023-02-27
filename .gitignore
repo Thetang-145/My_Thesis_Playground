@@ -6,6 +6,10 @@
 # Environment
 **/*env/
 
+# Model's parameters
+**/saved_parameters
+
+
 # Dataset
 */dataset*
 
