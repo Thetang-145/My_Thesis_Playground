@@ -3,8 +3,12 @@
 /SciERC
 /adapter-transformers
 
+# Environment
+**/*env/
+
 # Dataset
 */dataset*
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
