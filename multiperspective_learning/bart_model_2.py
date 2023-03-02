@@ -9,16 +9,27 @@ import torch
 from torch.utils.data import Dataset
 from transformers import BartTokenizer, BartForConditionalGeneration
 from transformers import AutoTokenizer, AutoModelWithLMHead
-from transformers import AdapterConfig, PrefixTuningConfig, AdapterType
+# from transformers import AdapterConfig, PrefixTuningConfig, AdapterType
 from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer, DataCollatorForSeq2Seq
-from transformers.adapters import BartAdapterModel
-from transformers.adapters.composition import Stack, Fuse
+# from transformers.adapters import BartAdapterModel
+# from transformers.adapters.composition import Stack, Fuse
 
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 BATCH_SIZE        = 2
-MAX_INPUT_LENGTH  = 1024
-MAX_TARGET_LENGTH = 2048
+MAX_INPUT_LENGTH  = 512
+MAX_TARGET_LENGTH = 512
 PROTOTYPE_SIZE    = 16*8 #samples
 
 MODEL_CHECKPOINT = 'facebook/bart-large'
@@ -62,15 +73,20 @@ def show_samples(dataset, num_samples=1, seed=42):
         print(f"'>> Text ({len(example['text'])} characters):  {(example['text'][:200])}'")
         print(f"'>> Summary: {(example['summary'])}'")
 
+        
+        
+        
+        
+        
+        
 def main():
     raw_dataset = load_dataset("allenai/mup")
-    train_dataset = raw_dataset["train"]
+    train_dataset = Dataset.from_pandas(pd.DataFrame(data=(raw_dataset["train"][:PROTOTYPE_SIZE])))
     
     
-    # print(torch.cuda.is_available())
-    # print(torch.cuda.device_count())
-    torch.cuda.set_device(1)
-    print(torch.cuda.current_device())
+    torch.cuda.set_device(0)
+
+    print(f"{bcolors.OKGREEN}DEIVCE: {bcolors.ENDC}{torch.cuda.get_device_name(torch.cuda.current_device())}")
     # for i in range(torch.cuda.device_count()):
     #     print(torch.cuda.device(i))
     #     print(torch.cuda.get_device_name(i))
@@ -85,20 +101,19 @@ def main():
             )
     print(train_dataset)
     
-
-    print("Load model")
+    print(f"{bcolors.OKGREEN}\n===== LOAD MODEL ====={bcolors.ENDC}")
     model = BartForConditionalGeneration.from_pretrained(MODEL_CHECKPOINT)
     
-    print("Data collator")
+    print(f"{bcolors.OKGREEN}\n===== DATA COLLATOR ====={bcolors.ENDC}")
     label_pad_token_id = -100
     data_collator = DataCollatorForSeq2Seq(
         tokenizer,
         model=model,
-        label_pad_token_id=label_pad_token_id,
-        pad_to_multiple_of=8,
+        # label_pad_token_id=label_pad_token_id,
+        # pad_to_multiple_of=8,
     )
         
-    print("Training args")
+    print(f"{bcolors.OKGREEN}\n===== TRAINING ARGS ====={bcolors.ENDC}")
     training_args = Seq2SeqTrainingArguments(
         output_dir='./results',
         num_train_epochs=3,
@@ -112,7 +127,12 @@ def main():
         # push_to_hub=True,
     )
 
-    print("Trainer")
+    print(f"{bcolors.OKGREEN}\n===== TRAINER ====={bcolors.ENDC}")
+    
+    train_dataset = train_dataset.remove_columns(
+        raw_dataset["train"].column_names
+    )
+   
     trainer = Seq2SeqTrainer(
         model=model,
         args=training_args,
@@ -120,9 +140,8 @@ def main():
         tokenizer=tokenizer,
         data_collator=data_collator,
     )
-       
     
-    print("Train")
+    print(f"{bcolors.OKGREEN}\n===== TRAIN ====={bcolors.ENDC}")
     trainer.train()
 
     

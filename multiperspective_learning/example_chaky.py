@@ -25,7 +25,7 @@ class bcolors:
 VERBOSE = False
 PADDING = False
 
-huggingface_hub.login("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", True)
+huggingface_hub.login("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")
 
 spanish_dataset = load_dataset("amazon_reviews_multi", "es")
 english_dataset = load_dataset("amazon_reviews_multi", "en")
@@ -201,16 +201,22 @@ for k, v in features[0].items():
 print(f"{bcolors.OKGREEN}\n===== DATA COLLECTOR ====={bcolors.ENDC}")
 print(data_collator(features).keys())
 
-print(f"{bcolors.OKGREEN}\n===== TRAINER ====={bcolors.ENDC}")
-trainer = Seq2SeqTrainer(
-    model,
-    args,
-    train_dataset=tokenized_datasets["train"],
-    eval_dataset=tokenized_datasets["validation"],
-    data_collator=data_collator,
-    tokenizer=tokenizer,
-    compute_metrics=compute_metrics,
-)
+print(f"{bcolors.OKGREEN}\n===== DATASET ====={bcolors.ENDC}")
+print(tokenized_datasets["train"])
+print(len(tokenized_datasets["train"]['input_ids']))
+print(len(tokenized_datasets["train"]['input_ids'][0]))
+print(type(tokenized_datasets["train"]['input_ids'][0][0]))
 
-print(f"{bcolors.OKGREEN}\n===== TRAIN ====={bcolors.ENDC}")
-trainer.train()
+# print(f"{bcolors.OKGREEN}\n===== TRAINER ====={bcolors.ENDC}")
+# trainer = Seq2SeqTrainer(
+#     model,
+#     args,
+#     train_dataset=tokenized_datasets["train"],
+#     eval_dataset=tokenized_datasets["validation"],
+#     data_collator=data_collator,
+#     tokenizer=tokenizer,
+#     compute_metrics=compute_metrics,
+# )
+
+# print(f"{bcolors.OKGREEN}\n===== TRAIN ====={bcolors.ENDC}")
+# trainer.train()
