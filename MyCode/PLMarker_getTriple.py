@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 import os
-import random
+import sys
 from pathlib import Path
 from collections import defaultdict
 
@@ -97,10 +97,14 @@ MODEL_CLASSES = {
     'albertspanmarker': (AlbertConfig, AlbertForSpanMarkerNER, AlbertTokenizer),
 }
 
+def print_progress(curr, full, prefix="", bar_size=40):    
+    bar = int((curr+1)/full*bar_size)
+    sys.stdout.write(f"\r{prefix}[{'='*bar}{' '*(bar_size-bar)}] {curr+1}/{full}")
+    sys.stdout.flush()
+    
 class ACEDatasetNER(Dataset):
-    def __init__(self, tokenizer, evaluate=False, do_test=False):
+    def __init__(self, tokenizer, file_path, evaluate=False, do_test=False):
 
-        file_path = str((Path().absolute()).parents[0])+"/SciERC/dataset_SciERC/test.json"
         assert os.path.isfile(file_path)
 
         self.file_path = file_path
@@ -151,6 +155,7 @@ class ACEDatasetNER(Dataset):
         
     
     def initialize(self):
+        print("\tACEDatasetNER-Initialize")
         tokenizer = self.tokenizer
         max_num_subwords = self.max_seq_length - 2
 
@@ -171,8 +176,11 @@ class ACEDatasetNER(Dataset):
         self.ner_golden_labels = set([])
         maxL = 0
         maxR = 0
+        # len_f = 18934
+        len_f = 3604
 
         for l_idx, line in enumerate(f):
+            print_progress(l_idx, len_f, prefix="\t")
             data = json.loads(line)
             # if len(self.data) > 5:
             #     break
@@ -323,16 +331,114 @@ class ACEDatasetNER(Dataset):
         logger.info('maxL: %d', maxL) # 334
         logger.info('maxR: %d', maxR) 
 
-        # exit()  
+        # exit() 
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        entry = self.data[idx]
+
+        input_ids = self.tokenizer.convert_tokens_to_ids(entry['sentence'])
+        L = len(input_ids)
+
+        input_ids += [0] * (self.max_seq_length - len(input_ids))
+        position_plus_pad = int(self.model_type.find('roberta')!=-1) * 2
+
+        if self.model_type not in ['bertspan', 'robertaspan', 'albertspan']:
+
+            if self.model_type.startswith('albert'):
+                input_ids = input_ids + [30000] * (len(entry['examples'])) + [0] * (self.max_pair_length - len(entry['examples']))   
+                input_ids = input_ids + [30001] * (len(entry['examples'])) + [0] * (self.max_pair_length - len(entry['examples']))
+            elif self.model_type.startswith('roberta'):
+                input_ids = input_ids + [50261] * (len(entry['examples'])) + [0] * (self.max_pair_length - len(entry['examples']))   
+                input_ids = input_ids + [50262] * (len(entry['examples'])) + [0] * (self.max_pair_length - len(entry['examples']))
+            else:
+                input_ids = input_ids + [1] * (len(entry['examples'])) + [0] * (self.max_pair_length - len(entry['examples']))   
+                input_ids = input_ids + [2] * (len(entry['examples'])) + [0] * (self.max_pair_length - len(entry['examples']))
+
+            attention_mask = torch.zeros((self.max_entity_length + self.max_seq_length, self.max_entity_length + self.max_seq_length), dtype=torch.int64)
+            attention_mask[:L, :L] = 1
+            position_ids = list(range(position_plus_pad, position_plus_pad+self.max_seq_length)) + [0] * self.max_entity_length 
+
+        else:
+            attention_mask = [1] * L + [0] * (self.max_seq_length - L)
+            attention_mask = torch.tensor(attention_mask, dtype=torch.int64)
+            position_ids = list(range(position_plus_pad, position_plus_pad+self.max_seq_length)) + [0] * self.max_entity_length 
 
 
-def evaluate(model, tokenizer, prefix="", do_test=False):
+
+        labels = []
+        mentions = []
+        mention_pos = []
+        num_pair = self.max_pair_length
+
+        full_attention_mask = [1] * L + [0] * (self.max_seq_length - L) + [0] * (self.max_pair_length)*2
+
+        for x_idx, x in enumerate(entry['examples']):
+            m1 = x[0]
+            label = x[1]
+            mentions.append(x[2])
+            mention_pos.append((m1[0], m1[1]))
+            labels.append(label)
+
+            if self.model_type in ['bertspan', 'robertaspan', 'albertspan']:
+                continue
+
+            w1 = x_idx  
+            w2 = w1 + num_pair
+
+            w1 += self.max_seq_length
+            w2 += self.max_seq_length
+            position_ids[w1] = m1[0]
+            position_ids[w2] = m1[1]
+
+            for xx in [w1, w2]:
+                full_attention_mask[xx] = 1
+                for yy in [w1, w2]:
+                    attention_mask[xx, yy] = 1
+                attention_mask[xx, :L] = 1
+
+        labels += [-1] * (num_pair - len(labels))
+        mention_pos += [(0, 0)] * (num_pair - len(mention_pos))
+
+
+
+        item = [torch.tensor(input_ids),
+                attention_mask,
+                torch.tensor(position_ids),
+                torch.tensor(labels, dtype=torch.int64),
+                torch.tensor(mention_pos),
+                torch.tensor(full_attention_mask)
+        ]       
+
+        if self.evaluate:
+            item.append(entry['example_index'])
+            item.append(mentions)
+
+
+        return item
+
+    @staticmethod
+    def collate_fn(batch):
+        fields = [x for x in zip(*batch)]
+
+        num_metadata_fields = 2
+        stacked_fields = [torch.stack(field) for field in fields[:-num_metadata_fields]]  # don't stack metadata fields
+        stacked_fields.extend(fields[-num_metadata_fields:])  # add them as lists not torch tensors
+
+        return stacked_fields
+
+
+def evaluate(model, tokenizer, file_path, prefix="", do_test=False):
 
     eval_output_dir = OUTPUT_DIR
 
     results = {}
+    
+    print("Before ACEDatasetNER")
+    eval_dataset = ACEDatasetNER(tokenizer=tokenizer, file_path=file_path, evaluate=True, do_test=do_test)    
+    print("After ACEDatasetNER")
 
-    eval_dataset = ACEDatasetNER(tokenizer=tokenizer, evaluate=True, do_test=do_test)
     ner_golden_labels = set(eval_dataset.ner_golden_labels)
     ner_tot_recall = eval_dataset.tot_recall
 
@@ -380,6 +486,11 @@ def evaluate(model, tokenizer, prefix="", do_test=False):
             ner_logits = outputs[0]
             ner_logits = torch.nn.functional.softmax(ner_logits, dim=-1)
             ner_values, ner_preds = torch.max(ner_logits, dim=-1)
+            
+            print(f"ner_logits: {ner_logits}")
+            print(f"ner_values: {ner_values}")
+            print(f"ner_preds: {ner_preds}")
+            break
 
             for i in range(len(indexs)):
                 index = indexs[i]
@@ -485,7 +596,9 @@ def evaluate(model, tokenizer, prefix="", do_test=False):
         
 def main():
     
-    if LOCAL_RANK == -1 or NO_CUDA:
+    global device
+    global N_GPU
+    if LOCAL_RANK == -1 or NO_CUDA: 
         device = torch.device("cuda" if torch.cuda.is_available() and not NO_CUDA else "cpu")
         N_GPU = torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
@@ -494,12 +607,16 @@ def main():
         torch.distributed.init_process_group(backend='nccl')
         N_GPU = 1
         
+    print(f"{'='*20} Running on {device} {'='*20}\n")
+        
 
     print("Import success")
     
     config_class, model_class, tokenizer_class = MODEL_CLASSES[MODEL_TYPE]
     
-    model_name_or_path = "PL-Marker/pretrained_model/sciner-scibert"
+    main_path = str((Path().absolute()).parents[0])
+    
+    model_name_or_path = main_path+"/PL-Marker/pretrained_model/sciner-scibert"
     
     config = config_class.from_pretrained(model_name_or_path, num_labels=NUM_LABELS)
 
@@ -513,6 +630,9 @@ def main():
     
     model = model_class.from_pretrained(model_name_or_path, from_tf=bool('.ckpt' in model_name_or_path), config=config)
     print("import model: DONE")
+    
+    file_path = f"{main_path}/PL-Marker/prepared_data/val.jsonl"
+    evaluate(model, tokenizer, file_path)
 
 
 if __name__ == "__main__":

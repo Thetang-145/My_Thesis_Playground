@@ -1,5 +1,6 @@
 # Git repo
 /PL-Marker
+!/PL-Marker/PLMarker_getTriple.py
 /SciERC
 /adapter-transformers
 
