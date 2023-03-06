@@ -1,8 +1,8 @@
 # Git repo
-/PL-Marker
-!/PL-Marker/PLMarker_getTriple.py
-/SciERC
-/adapter-transformers
+PL-Marker/*
+!PL-Marker/PLMarker_getTriple.py
+SciERC/
+adapter-transformers/
 
 # Environment
 **/*env/
