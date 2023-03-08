@@ -1,6 +1,6 @@
 # Git repo
 PL-Marker/*
-!PL-Marker/add*
+!PL-Marker/_*
 SciERC/
 adapter-transformers/
 

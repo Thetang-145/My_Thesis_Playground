@@ -170,14 +170,13 @@ class ACEDatasetNER(Dataset):
                 return tokenizer.tokenize(text, add_prefix_space=True)
             return tokenizer.tokenize(text)
 
+        len_f = sum(1 for line in open(self.file_path))
         f = open(self.file_path, "r", encoding='utf-8')
         self.data = []
         self.tot_recall = 0
         self.ner_golden_labels = set([])
         maxL = 0
         maxR = 0
-        len_f = 18934
-        # len_f = 3604
 
         for l_idx, line in enumerate(f):
             print_progress(l_idx, len_f, prefix="\t")
