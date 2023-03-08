@@ -135,44 +135,17 @@ class ACEDataset(Dataset):
         self.model_type = args.model_type
         self.no_sym = args.no_sym
 
-        if args.data_dir.find('ace05')!=-1:
-            self.ner_label_list = ['NIL', 'FAC', 'WEA', 'LOC', 'VEH', 'GPE', 'ORG', 'PER']
-
-            if args.no_sym:
-                label_list = ['PER-SOC', 'ART', 'ORG-AFF', 'GEN-AFF', 'PHYS', 'PART-WHOLE']
-                self.sym_labels = ['NIL']
-                self.label_list = self.sym_labels + label_list
-            else:
-                label_list = ['ART', 'ORG-AFF', 'GEN-AFF', 'PHYS',  'PART-WHOLE']
-                self.sym_labels = ['NIL', 'PER-SOC']
-                self.label_list = self.sym_labels + label_list
-
-        elif args.data_dir.find('ace04')!=-1:
-            self.ner_label_list = ['NIL', 'FAC', 'WEA', 'LOC', 'VEH', 'GPE', 'ORG', 'PER']
-
-            if args.no_sym:
-                label_list = ['PER-SOC', 'OTHER-AFF', 'ART', 'GPE-AFF', 'EMP-ORG', 'PHYS']
-                self.sym_labels = ['NIL']
-                self.label_list = self.sym_labels + label_list
-            else:
-                label_list = ['OTHER-AFF', 'ART', 'GPE-AFF', 'EMP-ORG', 'PHYS']
-                self.sym_labels = ['NIL', 'PER-SOC']
-                self.label_list = self.sym_labels + label_list
-
-        elif args.data_dir.find('scierc')!=-1:      
-            self.ner_label_list = ['NIL', 'Method', 'OtherScientificTerm', 'Task', 'Generic', 'Material', 'Metric']
-
-            if args.no_sym:
-                label_list = ['CONJUNCTION', 'COMPARE', 'PART-OF', 'USED-FOR', 'FEATURE-OF',  'EVALUATE-FOR', 'HYPONYM-OF']
-                self.sym_labels = ['NIL']
-                self.label_list = self.sym_labels + label_list
-            else:
-                label_list = ['PART-OF', 'USED-FOR', 'FEATURE-OF',  'EVALUATE-FOR', 'HYPONYM-OF']
-                self.sym_labels = ['NIL', 'CONJUNCTION', 'COMPARE']
-                self.label_list = self.sym_labels + label_list
-
+    
+        self.ner_label_list = ['NIL', 'Method', 'OtherScientificTerm', 'Task', 'Generic', 'Material', 'Metric']
+        if args.no_sym:
+            label_list = ['CONJUNCTION', 'COMPARE', 'PART-OF', 'USED-FOR', 'FEATURE-OF',  'EVALUATE-FOR', 'HYPONYM-OF']
+            self.sym_labels = ['NIL']
+            self.label_list = self.sym_labels + label_list
         else:
-            assert (False)  
+            label_list = ['PART-OF', 'USED-FOR', 'FEATURE-OF',  'EVALUATE-FOR', 'HYPONYM-OF']
+            self.sym_labels = ['NIL', 'CONJUNCTION', 'COMPARE']
+            self.label_list = self.sym_labels + label_list
+
 
         self.global_predicted_ners = {}
         self.initialize()
@@ -1011,8 +984,13 @@ def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True):
     logger.info("  Evaluation done in total %f secs (%f example per second)", evalTime,  len(global_predicted_ners) / evalTime)
 
     if do_test:
+        f = open(os.path.join(args.data_dir, args.test_file))
         output_w = open(os.path.join(args.output_dir, args.output_file), 'w')
-        json.dump(tot_output_results, output_w)
+        for l_idx, line in enumerate(f):
+            data = json.loads(line)
+            data['predicted_re'] = tot_output_results[l_idx]
+            output_w.write(json.dumps(data)+'\n')
+
 
     if do_score:
         ner_p = ner_cor / ner_tot_pred if ner_tot_pred > 0 else 0 
@@ -1194,22 +1172,13 @@ def main():
     # Set seed
     set_seed(args)
 
-    if args.data_dir.find('ace')!=-1:
-        num_ner_labels = 8
 
-        if args.no_sym:
-            num_labels = 7 + 7 - 1
-        else:
-            num_labels = 7 + 7 - 2
-    elif args.data_dir.find('scierc')!=-1:
-        num_ner_labels = 7
-
-        if args.no_sym:
-            num_labels = 8 + 8 - 1
-        else:
-            num_labels = 8 + 8 - 3
+    num_ner_labels = 7
+    if args.no_sym:
+        num_labels = 8 + 8 - 1
     else:
-        assert (False)
+        num_labels = 8 + 8 - 3
+
 
     # Load pretrained model and tokenizer
     if args.local_rank not in [-1, 0]:

@@ -6,7 +6,7 @@ CUDA_VISIBLE_DEVICES=0  python3  _getNER.py  --model_type bertspanmarker  \
     --do_eval  --evaluate_during_training   --eval_all_checkpoints  \
     --fp16  --seed 42  --onedropout  --lminit  \
     --test_file val.jsonl  \
-    --output_dir sciner_models/sciner-scibert  --output_file val_ner_new.json \
+    --output_dir sciner_models/sciner-scibert  --output_file val_ner.json \
     --overwrite_output_dir  --output_results
     
 CUDA_VISIBLE_DEVICES=0  python3  _getNER.py  --model_type bertspanmarker  \
@@ -17,5 +17,5 @@ CUDA_VISIBLE_DEVICES=0  python3  _getNER.py  --model_type bertspanmarker  \
     --do_eval  --evaluate_during_training   --eval_all_checkpoints  \
     --fp16  --seed 42  --onedropout  --lminit  \
     --test_file train.jsonl  \
-    --output_dir sciner_models/sciner-scibert  --output_file train_ner_new.json \
+    --output_dir sciner_models/sciner-scibert  --output_file train_ner.json \
     --overwrite_output_dir  --output_results

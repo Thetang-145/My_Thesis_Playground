@@ -777,9 +777,7 @@ def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True):
 
         results = {'f1':  f1, 'f1_overlap': f1_tot, 'precision': precision_score, 'recall': recall_score}
 
-
-
-    logger.info("Result: %s", json.dumps(results))
+        logger.info("Result: %s", json.dumps(results))
 
     if args.output_results:
         f = open(eval_dataset.file_path)
