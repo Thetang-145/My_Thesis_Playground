@@ -3,6 +3,7 @@ import sys
 import json
 from pathlib import Path
 import spacy
+import argparse
 
 DATAFILES = {
     "train": "training_complete.jsonl",
@@ -16,20 +17,30 @@ def print_progress(curr, full, bar_size=50):
     sys.stdout.flush()
     
 
-def load_data(filepath):
-    print("Loading data")
+def load_data(filepath, section):
+    print(f"Loading data")
     with open(filepath, 'r') as json_file:
         json_list = list(json_file)
     dataset = []
     data_len = len(json_list)
-    for i, json_str in enumerate(json_list):
-        result = json.loads(json_str)
-        dataset.append({
-            "doc_key": result["paper_id"], 
-            "sentences": result["summary"]
-        })
-        print_progress(i, data_len)
-        # break
+    if section == "summary":
+        for i, json_str in enumerate(json_list):
+            result = json.loads(json_str)
+            dataset.append({
+                "doc_key": result["paper_id"], 
+                "sentences": result["summary"]
+            })            
+            print_progress(i, data_len)
+    elif section == "abstract":
+        for i, json_str in enumerate(json_list):
+            result = json.loads(json_str)
+            dataset.append({
+                "doc_key": result["paper_id"], 
+                "sentences": result["paper"]["abstractText"]
+            })            
+            print_progress(i, data_len)
+    else:
+        raise Exception("section is not correct")
     print()
     return dataset
 
@@ -52,30 +63,42 @@ def convert_data(data):
     print()
     return data
 
-def write_jsonl(data, output_path, filename,append=False):
-    print("Writing data to jsonl file")
+def export_data(data, output_dir, filename, append=False):
+    print("Writing prepared data to jsonl file")
     mode = 'a+' if append else 'w'
-    if not(Path(output_path).exists()): os.mkdir(output_path)
-    with open(output_path+filename, mode, encoding='utf-8') as f:
+    if not(Path(output_dir).exists()): os.mkdir(output_dir)
+    with open(output_dir+filename, mode, encoding='utf-8') as f:
         for line in data:
             json_record = json.dumps(line, ensure_ascii=False)
             f.write(json_record + '\n')
-    print('Wrote {} records to {}'.format(len(data), output_path))
+    print('Wrote {} records to {}'.format(len(data), output_dir+filename))
     
 
 def main():
+    parser = argparse.ArgumentParser()
+
+    ## Required parameters
+    parser.add_argument("--section", default='summary', type=str, required=True,
+                        help="which data to be prepated: summary, abstract, 1st_sec")
+    parser.add_argument("--output_dir", default='/_prepared_data/', type=str, required=True,
+                        help="Directory of prepared data")
+    args = parser.parse_args()
+
+    
+    
     main_path = str((Path().absolute()).parents[0])
     dataset_path = main_path+"/MuP_sum/dataset/"
     for key, val in DATAFILES.items():
-        if key == "test":
+        if key=="test" and args.section=='summary':
              continue
         print(f"{'*'*25} Processing {key} data {'*'*25}")
-        data = load_data(dataset_path+val)
+        data = load_data(dataset_path+val, args.section)
         data = convert_data(data)
-        write_jsonl(data, f"{main_path}/PL-Marker/_prepared_data/", f"{key}.jsonl")
+        export_data(
+            data, 
+            output_dir = f"{args.output_dir}/{args.section}/", 
+            filename   = f"{key}.jsonl"
+        )
         
-    
-
-
 if __name__ == "__main__":
     main()
