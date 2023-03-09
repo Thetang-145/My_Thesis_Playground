@@ -187,6 +187,8 @@ class ACEDatasetNER(Dataset):
         maxR = 0
         
         for l_idx, line in enumerate(f):
+            if l_idx>2:
+                break
             print_progress(l_idx, len_f, prefix=f"{bcolors.OKBLUE}Data Loading: {bcolors.ENDC}")
             data = json.loads(line)
             # if len(self.data) > 5:
