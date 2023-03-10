@@ -778,7 +778,8 @@ def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True):
 
 
     evalTime = timeit.default_timer() - start_time
-    print(f"\n{bcolors.OKBLUE}Extracting done in total {evalTime} secs ({len(global_predicted_ners)/evalTime} example per second): {bcolors.ENDC}{file_path}\n")
+    print(f"\n{bcolors.OKBLUE}Extracting done in total{bcolors.ENDC} {evalTime} secs ")
+    print(f"({len(global_predicted_ners)/evalTime} examples per second)\n")
 
 
     if do_test:

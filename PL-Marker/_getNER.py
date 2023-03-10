@@ -123,12 +123,9 @@ class ACEDatasetNER(Dataset):
         self.args = args
         self.model_type = args.model_type
 
-        if args.data_dir.find('ace')!=-1:
-            self.ner_label_list = ['NIL', 'FAC', 'WEA', 'LOC', 'VEH', 'GPE', 'ORG', 'PER']
-        elif args.data_dir.find('scierc')!=-1:
-            self.ner_label_list = ['NIL', 'Method', 'OtherScientificTerm', 'Task', 'Generic', 'Material', 'Metric']
-        else:
-            self.ner_label_list = ['NIL', 'CARDINAL', 'DATE', 'EVENT', 'FAC', 'GPE', 'LANGUAGE', 'LAW', 'LOC', 'MONEY', 'NORP', 'ORDINAL', 'ORG', 'PERCENT', 'PERSON', 'PRODUCT', 'QUANTITY', 'TIME', 'WORK_OF_ART']
+
+        self.ner_label_list = ['NIL', 'Method', 'OtherScientificTerm', 'Task', 'Generic', 'Material', 'Metric']
+
 
         self.max_pair_length = args.max_pair_length
 
@@ -578,7 +575,7 @@ def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True):
                 cor += 1        
 
     evalTime = timeit.default_timer() - start_time
-    print(f"\n{bcolors.OKBLUE}Extracting done in total {evalTime} secs ({len(global_predicted_ners)/evalTime} example per second): {bcolors.ENDC}{file_path}\n")
+    print(f"\n{bcolors.OKBLUE}Extracting done in total {evalTime} secs ({len(eval_dataset)/evalTime} example per second): {bcolors.ENDC}\n")
 
     if do_score:
         precision_score = p = cor / tot_pred if tot_pred > 0 else 0 
@@ -762,15 +759,7 @@ def main():
     args.device = device
 
     # Set seed
-    set_seed(args)
-    if args.data_dir.find('ace')!=-1:
-        num_labels = 8
-    elif args.data_dir.find('scierc')!=-1:
-        num_labels = 7
-    elif args.data_dir.find('ontonotes')!=-1:
-        num_labels = 19
-    else:
-        assert (False)
+    num_labels = 7
 
     # Load pretrained model and tokenizer
     if args.local_rank not in [-1, 0]:
