@@ -39,9 +39,38 @@ def load_data(filepath, section):
                 "sentences": result["paper"]["abstractText"]
             })            
             print_progress(i, data_len)
+    elif section[:8] == "section_":
+        heading = section[8:]
+        cannot_import = 0
+        try:
+            heading = int(heading)
+            for i, json_str in enumerate(json_list):
+                result = json.loads(json_str)
+                try:
+                    dataset.append({
+                        "doc_key": result["paper_id"], 
+                        "sentences": result["paper"]["section"][heading]['text']
+                    })            
+                except:                
+                    cannot_import += 1
+                print_progress(i, data_len)
+        except:
+            for i, json_str in enumerate(json_list):
+                result = json.loads(json_str)
+                try:
+                    for dict_section in (result["paper"]["sections"]):
+                        if dict_section['heading'].lower().find(heading) != -1: 
+                            dataset.append({
+                                "doc_key": result["paper_id"], 
+                                "sentences": dict_section['text']
+                            })
+                            break
+                except:                
+                    cannot_import += 1
+                print_progress(i, data_len)
     else:
         raise Exception("section is not correct")
-    print()
+        print(f"Successfully import {data_len-cannot_import}/{data_len} samples")
     return dataset
 
 def convert_data(data):
