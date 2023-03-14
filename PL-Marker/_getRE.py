@@ -81,7 +81,7 @@ task_rel_labels = {
     'scierc': ['PART-OF', 'USED-FOR', 'FEATURE-OF', 'CONJUNCTION', 'EVALUATE-FOR', 'HYPONYM-OF', 'COMPARE'],
 }
 
-def print_progress(curr, full, prefix="", bar_size=40):    
+def print_progress(curr, full, prefix="", bar_size=30):    
     bar = int((curr+1)/full*bar_size)
     sys.stdout.write(f"\r{prefix}[{'='*bar}{' '*(bar_size-bar)}] {curr+1}/{full}")
     sys.stdout.flush()
@@ -175,7 +175,7 @@ class ACEDataset(Dataset):
         maxL = 0
         
         for l_idx, line in enumerate(f):
-            print_progress(l_idx, len_f, prefix=f"{bcolors.OKBLUE}Data Loading: {bcolors.ENDC}")
+            print_progress(l_idx, len_f, prefix=f"{bcolors.OKBLUE}Loading {self.args.test_file}: {bcolors.ENDC}")
             data = json.loads(line)
 
             if self.args.output_dir.find('test')!=-1:
@@ -512,7 +512,7 @@ def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True):
 
     start_time = timeit.default_timer() 
 
-    for batch in tqdm(eval_dataloader, desc="Extracting"):
+    for batch in tqdm(eval_dataloader, desc=f"Extracting RE from {args.test_file}"):
         indexs = batch[-3]
         subs = batch[-2]
         batch_m2s = batch[-1]

@@ -94,7 +94,7 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
     
-def print_progress(curr, full, prefix="", bar_size=50):    
+def print_progress(curr, full, prefix="", bar_size=30):    
     bar = int((curr+1)/full*bar_size)
     sys.stdout.write(f"\r{prefix}[{'='*bar}{' '*(bar_size-bar)}] {curr+1}/{full}")
     sys.stdout.flush()
@@ -181,7 +181,7 @@ class ACEDatasetNER(Dataset):
         maxR = 0
         
         for l_idx, line in enumerate(f):
-            print_progress(l_idx, len_f, prefix=f"{bcolors.OKBLUE}Data Loading: {bcolors.ENDC}")
+            print_progress(l_idx, len_f, prefix=f"{bcolors.OKBLUE}Loading {self.args.test_file}: {bcolors.ENDC}")
             data = json.loads(line)
             # if len(self.data) > 5:
             #     break
@@ -424,8 +424,6 @@ class ACEDatasetNER(Dataset):
 
         return stacked_fields
 
- 
-
 def set_seed(args):
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -488,7 +486,7 @@ def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True):
 
     start_time = timeit.default_timer() 
 
-    for batch in tqdm(eval_dataloader, desc="Extracting"):
+    for batch in tqdm(eval_dataloader, desc=f"Extracting NER from {args.test_file}"):
         indexs = batch[-2]
         batch_m2s = batch[-1]
 
