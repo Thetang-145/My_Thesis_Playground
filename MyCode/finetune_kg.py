@@ -199,7 +199,7 @@ def train(model, tokenizer, train_data):
     torch.save(model.state_dict(), f'model/finetune_full.pt')
     return
 
-def evaluate(model, tokenizer, test_data):
+def generateSummary(model, tokenizer, test_data):
     model.load_state_dict(torch.load('model/finetune_full.pt'))
 
     model.to(DEVICE)
@@ -237,7 +237,8 @@ def evaluate(model, tokenizer, test_data):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train", action='store_true', help="train model")
-    parser.add_argument("--eval", action='store_true', help="evaluate model")
+    parser.add_argument("--getSum", action='store_true', help="get generated summary from fine-tuned model")
+    parser.add_argument("--eval", action='store_true', help="evaluate generated summary")
     parser.add_argument('--prototype', type=int, help="number of data for prototype run")
     args = parser.parse_args()
     
@@ -249,10 +250,13 @@ def main():
         train_data = prepro_data("train", section="abstract", prototype=args.prototype)
         train(model, tokenizer, train_data)
     
-    if args.eval:
+    if args.getSum:
         eval_data = prepro_data("val", section="abstract", prototype=args.prototype)
-        result_df = evaluate(model, tokenizer, eval_data)
+        result_df = generateSummary(model, tokenizer, eval_data)
         result_df.to_csv("model/result.csv")
+        
+    if args.eval:
+        
         
 if __name__ == "__main__":
     main()
