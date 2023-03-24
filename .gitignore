@@ -3,7 +3,7 @@ PL-Marker/*
 !PL-Marker/_*
 SciERC/
 adapter-transformers/
-MyCode/model/model_*
+MyCode/model/*.pt
 
 # Environment
 **/*env/
