@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 import argparse
 import timeit
+import logging
 
 from tqdm import tqdm
 from transformers import BartForConditionalGeneration, BartTokenizer, AdamW
@@ -34,7 +35,6 @@ TRIAN_BATCH_SIZE = 8
 EVAL_BATCH_SIZE  = 8
 NUM_EPOCH  = 5
 LEARNING_RATE = 1e-5
-DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 def print_progress(curr, full, desc='', bar_size=30):    
@@ -47,6 +47,7 @@ def print_progress(curr, full, desc='', bar_size=30):
 def getInputDataset(data_split, section):
     main_path = str((Path().absolute()).parents[0])
     filepath = f"{main_path}/PL-Marker/_scire_models/{section}/{data_split}_re.json"
+    print(f"Loading data from: {filepath}")
     with open(filepath, 'r') as json_file:
         json_list = list(json_file)
     return [json.loads(json_str) for json_str in json_list]
@@ -118,7 +119,7 @@ def getInputDF(data_split, section, prototype):
     return pd.DataFrame(dataset_list)
 
 
-def getTargetDF(data_split):
+def getTargetDF(data_split, prototype):
     main_path = str((Path().absolute()).parents[0])    
     filepath = f"{main_path}/MuP_sum/dataset/{RAWDATAFILES[data_split]}"
     with open(filepath, 'r') as json_file:
@@ -130,25 +131,59 @@ def getTargetDF(data_split):
         dataset_list.append({
             "paper_id": data["paper_id"], 
             "target_seq": data["summary"]
-        })   
+        })
         print_progress(i, data_len, desc=f'Loading summary ({data_split})')
+        if isinstance(prototype, int):
+            if i>=prototype-1: break
     return pd.DataFrame(dataset_list)
     
-    
-
-def prepro_data(data_split, section, prototype):
-    input_df = getInputDF(data_split, section, prototype)
-    target_df = getTargetDF(data_split)
-    merged_df = pd.merge(input_df, target_df, on='paper_id')
-    
-    # remove paper with issue
+def removeIssue(df):
     issue_doc = pd.read_csv("issue_data.csv")
     remove_index = []
     for paper_id in list(issue_doc['paper_id']):
-        remove_index += list(merged_df[merged_df['paper_id']==paper_id].index)
-    remove_index
-    merged_df_drop = merged_df.drop(index=remove_index)
-    return merged_df_drop
+        remove_index += list(df[df['paper_id']==paper_id].index)
+    return df.drop(index=remove_index)
+
+def prepro_KGData(data_split, section, prototype):
+    input_df = getInputDF(data_split, section, prototype)
+    target_df = getTargetDF(data_split, prototype)
+    input_df.set_index('paper_id', inplace=True)
+    target_df.set_index('paper_id', inplace=True)
+    merged_df = pd.concat([input_df, target_df], axis=1)
+    return removeIssue(merged_df.reset_index())
+
+def getDataset(data_split, section, prototype):
+    main_path = str((Path().absolute()).parents[0])    
+    filepath = f"{main_path}/MuP_sum/dataset/{RAWDATAFILES[data_split]}"
+    with open(filepath, 'r') as json_file:
+        json_list = list(json_file)
+    dataset_list = []
+    data_len = len(json_list)
+    for i, json_str in enumerate(json_list):
+        data = json.loads(json_str)
+        if section=='abstract':
+            dataset_list.append({
+                "paper_id": data["paper_id"], 
+                "input_seq": data["paper"]["abstractText"], 
+                "target_seq": data["summary"]
+            })
+        elif isinstance(section, int):
+            try:
+                dataset_list.append({
+                    "paper_id": data["paper_id"], 
+                    "input_seq": data["paper"]["section"][section-1], 
+                    "target_seq": data["summary"]
+                })
+            except:
+                pass
+        print_progress(i, data_len, desc=f'Loading summary ({data_split})')
+        if isinstance(prototype, int):
+            if i>=prototype-1: break
+    return pd.DataFrame(dataset_list)
+
+def prepro_textData(data_split, section, prototype):
+    dataset_df = getDataset(data_split, section, prototype)
+    return removeIssue(merged_df_drop)
 
 class MyDataset(Dataset):
     def __init__(self, data, tokenizer):
@@ -173,7 +208,7 @@ class MyDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-def train(model, tokenizer, train_data):
+def train(model, tokenizer, train_data, model_filename):
     model.to(DEVICE)
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
     
@@ -196,11 +231,11 @@ def train(model, tokenizer, train_data):
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-    torch.save(model.state_dict(), f'model/finetune_full.pt')
+    torch.save(model.state_dict(), f'model/{model_filename}')
     return
 
-def generateSummary(model, tokenizer, test_data):
-    model.load_state_dict(torch.load('model/finetune_full.pt'))
+def generateSum(model, tokenizer, test_data, model_filename):
+    model.load_state_dict(torch.load(f'model/{model_filename}'))
 
     model.to(DEVICE)
     model.eval()
@@ -227,35 +262,49 @@ def generateSummary(model, tokenizer, test_data):
             for idx, paper_id in enumerate(paper_id_list):
                 result.append({
                     'paper_id': paper_id,
-                    'gen_sum': tokenizer.decode(generated_ids[idx], skip_special_tokens=True)
+                    'input': tokenizer.decode(input_ids[idx], skip_special_tokens=True),
+                    'output': tokenizer.decode(generated_ids[idx], skip_special_tokens=True)
                 })
     result_df = pd.DataFrame(result)            
     return result_df
 
 
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train", action='store_true', help="train model")
-    parser.add_argument("--getSum", action='store_true', help="get generated summary from fine-tuned model")
-    parser.add_argument("--eval", action='store_true', help="evaluate generated summary")
+    parser.add_argument("--genSum", action='store_true', help="get generated summary from fine-tuned model")
     parser.add_argument('--prototype', type=int, help="number of data for prototype run")
+    parser.add_argument('--section', default='abstract' , type=str, help="section to gen summary")
+    parser.add_argument('--inputType', default='kg' , type=str, help="input types: kg, text")
+    parser.add_argument('--cuda', default=0 , type=int, help="cuda")
     args = parser.parse_args()
     
-            
+    global DEVICE 
+    DEVICE = torch.device(f'cuda:{args.cuda}' if torch.cuda.is_available() else 'cpu')
+       
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
     model = BartForConditionalGeneration.from_pretrained('facebook/bart-large')
-    
-    if args.train:
-        train_data = prepro_data("train", section="abstract", prototype=args.prototype)
-        train(model, tokenizer, train_data)
-    
-    if args.getSum:
-        eval_data = prepro_data("val", section="abstract", prototype=args.prototype)
-        result_df = generateSummary(model, tokenizer, eval_data)
-        result_df.to_csv("model/result_kg.csv")
         
-    if args.eval:
+    if args.train:
+        print("Loading Train data")
+        if args.inputType == 'kg':
+            train_data = prepro_KGData("train", section=args.section, prototype=args.prototype) 
+            train_data.to_csv(f"model/trainDataset_kg_{args.section}.csv")
+        else:
+            train_data = prepro_textData("train", section=args.section, prototype=args.prototype) 
+        
+        print(f"Training data on {DEVICE}")
+        train(model, tokenizer, train_data, model_filename=f'finetune_full_{args.section}.pt')
+
+    if args.genSum:
+        if args.inputType == 'kg':
+            eval_data = prepro_KGData("val", section=args.section, prototype=args.prototype)
+        eval_data.to_csv(f"model/result_kg_{args.section}_.csv")
+        result_df = generateSum(model, tokenizer, eval_data, model_filename=f'finetune_full_{args.section}.pt')
+        result_df.to_csv(f"model/result_kg_{args.section}.csv")
+
         
         
 if __name__ == "__main__":
