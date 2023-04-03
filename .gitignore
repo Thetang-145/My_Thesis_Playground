@@ -13,6 +13,7 @@ MyCode/model/*.pt
 
 
 # Dataset
+dataset*
 */dataset*
 
 
