@@ -64,7 +64,7 @@ def export_data(data, output_dir, filename, file_size_limit=float('inf')):
     
     # Convert MB to bytes
     if file_size_limit!=float('inf'):
-        file_size_limit = file_size_limit*pow(1024,2)
+        file_size_limit = int(file_size_limit*pow(1024,2)*0.9)
     
     file_size = 0
     file_number = 1
@@ -77,7 +77,7 @@ def export_data(data, output_dir, filename, file_size_limit=float('inf')):
                 f.close()
                 if file_number==1:
                     os.rename(f"{output_dir}{filename}.jsonl", f"{output_dir}{filename}_{file_number}.jsonl")    
-                print(f'Wrote {idx-recored} records (({file_size/pow(1024,2):.3f}MB)) to {output_dir}{filename}_{file_number}.')
+                print(f'\tWrote {idx-recored} records (({file_size/pow(1024,2):.3f}MB)) to {output_dir}{filename}_{file_number}.')
                 recored = idx
                 file_number += 1
                 file_size = 0
@@ -86,7 +86,8 @@ def export_data(data, output_dir, filename, file_size_limit=float('inf')):
     if file_number==1:
         print(f'Successfully wrote {len(data)} records ({file_size/pow(1024,2):.3f}MB) to {output_dir}{filename}')
     else:
-        print(f'Successfully wrote {len(data)} records to {output_dir}{filename} (1-{file_number})')
+        print(f'\tWrote {idx-recored} records (({file_size/pow(1024,2):.3f}MB)) to {output_dir}{filename}_{file_number}.')
+        print(f'Successfully wrote {len(data)} records to {file_number} output files')
     
 
 def main():
