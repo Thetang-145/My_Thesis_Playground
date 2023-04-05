@@ -145,7 +145,7 @@ def main():
     
     
     main_path = str((Path().absolute()).parents[0])
-    dataset_path = main_path+"/MuP_sum/dataset/"
+    dataset_path = main_path+"/dataset_MuP/"
     
     if args.section == 'summary': args.test = False
     

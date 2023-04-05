@@ -1,16 +1,20 @@
 import os
 import sys
 import json
-from pathlib import Path
-import pandas as pd
 import argparse
-import timeit
-import logging
+import pandas as pd
+from pathlib import Path
 
-from tqdm import tqdm
-from transformers import BartForConditionalGeneration, BartTokenizer, AdamW
+import logging
+import timeit
+from datetime import datetime, timedelta
+
 import torch
+from tqdm import tqdm
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
+from transformers import BartForConditionalGeneration, BartTokenizer, AdamW
+from rouge import Rouge
 
 
 ENT_TYPES = ['Task', 'Method', 'Material', 'Metric', 'OtherScientificTerm', 'Generic']
@@ -32,10 +36,12 @@ RAWDATAFILES = {
 MAX_INPUT_LENGTH = 512
 MAX_OUPUT_LENGTH = 512
 TRIAN_BATCH_SIZE = 8
+VAL_BATCH_SIZE   = 8
 EVAL_BATCH_SIZE  = 8
-NUM_EPOCH  = 5
+NUM_EPOCH = 5
+NUM_BEAMS = 4
 LEARNING_RATE = 1e-5
-
+FLOAT_PRECISION = torch.float16
 
 def print_progress(curr, full, desc='', bar_size=30):    
     bar = int((curr+1)/full*bar_size)
@@ -121,7 +127,7 @@ def getInputDF(data_split, section, prototype):
 
 def getTargetDF(data_split, prototype):
     main_path = str((Path().absolute()).parents[0])    
-    filepath = f"{main_path}/MuP_sum/dataset/{RAWDATAFILES[data_split]}"
+    filepath = f"{main_path}/dataset_MuP/{RAWDATAFILES[data_split]}"
     with open(filepath, 'r') as json_file:
         json_list = list(json_file)
     dataset_list = []
@@ -147,14 +153,14 @@ def removeIssue(df):
 def prepro_KGData(data_split, section, prototype):
     input_df = getInputDF(data_split, section, prototype)
     target_df = getTargetDF(data_split, prototype)
-    input_df.set_index('paper_id', inplace=True)
-    target_df.set_index('paper_id', inplace=True)
-    merged_df = pd.concat([input_df, target_df], axis=1)
+    # input_df.set_index('paper_id', inplace=True)
+    # target_df.set_index('paper_id', inplace=True)
+    merged_df = input_df.merge(target_df, how='inner', on='paper_id')
     return removeIssue(merged_df.reset_index())
 
 def getDataset(data_split, section, prototype):
     main_path = str((Path().absolute()).parents[0])    
-    filepath = f"{main_path}/MuP_sum/dataset/{RAWDATAFILES[data_split]}"
+    filepath = f"{main_path}/dataset_MuP/{RAWDATAFILES[data_split]}"
     with open(filepath, 'r') as json_file:
         json_list = list(json_file)
     dataset_list = []
@@ -183,7 +189,7 @@ def getDataset(data_split, section, prototype):
 
 def prepro_textData(data_split, section, prototype):
     dataset_df = getDataset(data_split, section, prototype)
-    return removeIssue(merged_df_drop)
+    return removeIssue(dataset_df)
 
 class MyDataset(Dataset):
     def __init__(self, data, tokenizer):
@@ -208,16 +214,90 @@ class MyDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-def train(model, tokenizer, train_data, model_filename):
-    model.to(DEVICE)
+def validation(model, tokenizer, val_loader):
+    model.eval()
+    rouge_f = {
+        'rouge-1': [],
+        'rouge-2': [],
+        'rouge-l': [],
+    }
+    with torch.no_grad():
+        for idx, batch in enumerate(val_loader):
+            # Forward pass through model
+            paper_id, input_ids, attention_mask, target_ids = batch
+            input_ids = input_ids.to(DEVICE)
+            attention_mask = attention_mask.to(DEVICE)
+            target_ids = target_ids.to(DEVICE)
+            generated_ids = model.generate(
+                input_ids=input_ids, 
+                attention_mask=attention_mask, 
+                max_length=tokenizer.model_max_length, 
+                num_beams=NUM_BEAMS
+            )
+            # Compute evaluation metrics
+            hyps = [tokenizer.decode(ids, skip_special_tokens=True) for ids in generated_ids]
+            refs = [tokenizer.decode(ids, skip_special_tokens=True) for ids in target_ids]
+            # print(len(hyps), len(refs))
+            # print(len(hyps[0]), hyps[0])
+            # print(len(refs[0]), refs[0])
+            scores = Rouge().get_scores(hyps, refs)
+            for k in rouge_f.keys(): rouge_f[k]+=[score[k]['f'] for score in scores]
+            # logging.info(f"\tValidating Batch:{idx+1}")
+            if (idx+1)>=100: break
+        for k in rouge_f.keys(): rouge_f[k]=sum(rouge_f[k])/len(rouge_f[k])
+    return rouge_f
+
+def contrastive_loss(logits, labels, margin=1.0):
+    """
+    Contrastive loss function
+    logits: output of the model
+    labels: target labels for the input
+    margin: margin parameter for the contrastive loss
+    """
+    # split the logits into anchor and positive pairs
+    anchor_logits = logits[::2]
+    pos_logits = logits[1::2]
+
+    # compute the distance between the anchor and positive pairs
+    distance = F.pairwise_distance(anchor_logits, pos_logits)
+
+    # compute the contrastive loss
+    loss_contrastive = torch.mean((1 - labels) * torch.pow(distance, 2) +
+                                  labels * torch.pow(torch.clamp(margin - distance, min=0.0), 2))
+
+    return loss_contrastive
+
+
+def train(model, tokenizer, train_data, val_data, model_filename, save_iter=500):
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
+    # model.config.loss_fct = contrastive_loss
+
+    logging.info(f"""Hyper-parameters:
+        Max_input_length = {MAX_INPUT_LENGTH}
+        Max_output_length = {MAX_OUPUT_LENGTH}
+        Train_BS = {TRIAN_BATCH_SIZE}
+        Num_epoch = {NUM_EPOCH}
+        Num_beams = {NUM_BEAMS}
+        lr = {LEARNING_RATE}""")
+    model.to(device=DEVICE)
     
     train_dataset = MyDataset(train_data, tokenizer)
     train_loader = DataLoader(train_dataset, batch_size=TRIAN_BATCH_SIZE)
     
-    model.train()
+    val_dataset = MyDataset(val_data, tokenizer)
+    val_loader = DataLoader(val_dataset, batch_size=VAL_BATCH_SIZE)
+
+    eval_record = []
+    max_rouge1 = 0
+    max_rougeAvg = 0
+    iter = 0
     for epoch in range(NUM_EPOCH):
-        for batch in tqdm(train_loader, desc=f"Fine-tuning epoch {epoch+1}"):
+        logging.info(f"Training Epoch:{epoch+1}")
+        start_time_ep = timeit.default_timer() 
+        for batch in tqdm(train_loader, desc=f"Fine-tuning epoch:{epoch+1}"):
+            model.train()
+            iter += 1
             paper_id, input_ids, attention_mask, target_ids = batch
             input_ids = input_ids.to(DEVICE)
             attention_mask = attention_mask.to(DEVICE)
@@ -231,13 +311,51 @@ def train(model, tokenizer, train_data, model_filename):
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-    torch.save(model.state_dict(), f'model/{model_filename}')
-    return
 
-def generateSum(model, tokenizer, test_data, model_filename):
-    model.load_state_dict(torch.load(f'model/{model_filename}'))
+            # Validation
+            if iter%save_iter==0:
+                start_time_val = timeit.default_timer() 
+                rouge_f = validation(model, tokenizer, val_loader)
+                valTime = timeit.default_timer() - start_time_val
+                valTime = str(timedelta(seconds=valTime))[:8]
+                logging.info(f"""Validating 
+                Epoch: {epoch+1} Iteration: {iter+1} 
+                TimeUsed: {valTime}""")
+                rouge_list = [rouge_f[k] for k in rouge_f.keys()]
+                rouge_avg = sum(rouge_list)/len(rouge_list)
+                eval_record.append({
+                    'epoach': epoch,
+                    'iteration': iter,
+                    'loss': loss,
+                    'rouge-1': rouge_f['rouge-1'],
+                    'rouge-2': rouge_f['rouge-2'],
+                    'rouge-l': rouge_f['rouge-l'],
+                    'rouge-avg': rouge_avg,
+                })
+                # Save model
+                if rouge_f['rouge-1']>max_rouge1:
+                    torch.save(model.state_dict(), f'model/{model_filename}_bestRouge1.pt')
+                    logging.info(f"Save best rouge1 model")
+                    max_rouge1 = rouge_f['rouge-1']
+                if rouge_avg>max_rougeAvg:
+                    torch.save(model.state_dict(), f'model/{model_filename}_bestRougeAvg.pt')
+                    logging.info(f"Save best rouge-avg model")
+                    max_rougeAvg = rouge_avg
+            else:
+                eval_record.append({
+                    'epoach': epoch,
+                    'iteration': iter,
+                    'loss': loss.item(),
+                })
+        epTime = timeit.default_timer() - start_time_ep
+        epTime = str(timedelta(seconds=epTime))[:8]
+        logging.info(f"Finish Epoch: {epoch+1} in {epTime}")
 
-    model.to(DEVICE)
+    return pd.DataFrame(eval_record)
+
+def generateSum(model, tokenizer, test_data, val_data, model_filename):
+    model.load_state_dict(torch.load(f'model/{model_filename}.pt'))
+    model.to(device=DEVICE)
     model.eval()
     total_loss = 0.0
     
@@ -257,7 +375,7 @@ def generateSum(model, tokenizer, test_data, model_filename):
                 input_ids=input_ids, 
                 attention_mask=attention_mask, 
                 max_length=tokenizer.model_max_length, 
-                num_beams=4
+                num_beams=NUM_BEAMS
             )
             for idx, paper_id in enumerate(paper_id_list):
                 result.append({
@@ -278,32 +396,54 @@ def main():
     parser.add_argument('--prototype', type=int, help="number of data for prototype run")
     parser.add_argument('--section', default='abstract' , type=str, help="section to gen summary")
     parser.add_argument('--inputType', default='kg' , type=str, help="input types: kg, text")
+    parser.add_argument("--saveData", action='store_true', help="Save data used in training and evaluating")
     parser.add_argument('--cuda', default=0 , type=int, help="cuda")
     args = parser.parse_args()
     
+    now = datetime.now()
+    dt_string = now.strftime(f"%y%m%d_%H%M%S")
+    log_dir = 'log'
+    if not(Path(log_dir).exists()): os.system(f"mkdir -p {log_dir}")
+    logging.basicConfig(
+        filename=f'{log_dir}/{dt_string}.log',
+        level=logging.INFO,
+        format='%(asctime)s:%(levelname)s: %(message)s',
+    )
+
     global DEVICE 
     DEVICE = torch.device(f'cuda:{args.cuda}' if torch.cuda.is_available() else 'cpu')
+    device_name = torch.cuda.get_device_name(args.cuda) if torch.cuda.is_available() else 'CPU'
        
     tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
     model = BartForConditionalGeneration.from_pretrained('facebook/bart-large')
         
     if args.train:
         print("Loading Train data")
+        logging.info(f"Loading {args.section} {args.inputType} data")
         if args.inputType == 'kg':
-            train_data = prepro_KGData("train", section=args.section, prototype=args.prototype) 
-            train_data.to_csv(f"model/trainDataset_kg_{args.section}.csv")
+            train_data = prepro_KGData("train", section=args.section, prototype=args.prototype)
+            val_data = prepro_KGData("val", section=args.section, prototype=args.prototype)
         else:
             train_data = prepro_textData("train", section=args.section, prototype=args.prototype) 
+            val_data = prepro_textData("val", section=args.section, prototype=args.prototype)
+        if args.saveData: 
+            train_data.to_csv(f"model/trainDataset_{args.section}_{args.inputType}.csv")
+            val_data.to_csv(f"model/valDataset_{args.section}_{args.inputType}.csv")
         
-        print(f"Training data on {DEVICE}")
-        train(model, tokenizer, train_data, model_filename=f'finetune_full_{args.section}.pt')
+        print(f"Training data on {DEVICE} ({device_name})")
+        logging.info(f"Start training on {DEVICE} ({device_name})")
+        trainRec = train(model, tokenizer, train_data, val_data, model_filename=f'{args.section}_{args.inputType}')
+        trainRec.to_csv(f"model/trainRec_{args.section}_{args.inputType}.csv")
 
     if args.genSum:
         if args.inputType == 'kg':
             eval_data = prepro_KGData("val", section=args.section, prototype=args.prototype)
-        eval_data.to_csv(f"model/result_kg_{args.section}_.csv")
-        result_df = generateSum(model, tokenizer, eval_data, model_filename=f'finetune_full_{args.section}.pt')
-        result_df.to_csv(f"model/result_kg_{args.section}.csv")
+        else:
+            eval_data = prepro_textData("val", section=args.section, prototype=args.prototype) 
+        if args.saveData: 
+            eval_data.to_csv(f"model/evalDataset_{args.section}_{args.inputType}.csv")
+        result_df = generateSum(model, tokenizer, eval_data, model_filename=f'{args.section}_{args.inputType}')
+        result_df.to_csv(f"model/result_{args.section}_{args.inputType}.csv")
 
         
         

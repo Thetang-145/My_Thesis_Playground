@@ -3,14 +3,15 @@ PL-Marker/*
 !PL-Marker/_*
 SciERC/
 adapter-transformers/
-MyCode/model/*.pt
 
 # Environment
 **/*env/
+**/env*/
+*env*
 
 # Model's parameters
 **/saved_parameters
-
+**/*.pt
 
 # Dataset
 dataset*
