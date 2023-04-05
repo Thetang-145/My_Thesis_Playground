@@ -57,18 +57,36 @@ def convert_data(data):
     print()
     return conv_data
 
-def export_data(data, output_dir, filename, append=False):
+def export_data(data, output_dir, filename, file_size_limit=float('inf')):
     print("Writing prepared data to jsonl file")
-    mode = 'a+' if append else 'w'
     print(output_dir)
-    if not(Path(output_dir).exists()): 
-        os.system(f"mkdir -p {output_dir}")
-        # os.mkdir(output_dir, 0755)
-    with open(output_dir+filename, mode, encoding='utf-8') as f:
-        for line in data:
-            json_record = json.dumps(line, ensure_ascii=False)
-            f.write(json_record + '\n')
-    print('Wrote {} records to {}'.format(len(data), output_dir+filename))
+    if not(Path(output_dir).exists()): os.system(f"mkdir -p {output_dir}")
+    
+    # Convert MB to bytes
+    if file_size_limit!=float('inf'):
+        file_size_limit = file_size_limit*pow(1024,2)
+    
+    file_size = 0
+    file_number = 1
+    recored = 0
+    with open(f"{output_dir}{filename}.jsonl", "w") as f:
+        for idx, line in enumerate(data):
+            json_str = json.dumps(line, ensure_ascii=False)
+            file_size += len(json_str.encode('utf-8')) + 1 
+            if file_size > file_size_limit:
+                f.close()
+                if file_number==1:
+                    os.rename(f"{output_dir}{filename}.jsonl", f"{output_dir}{filename}_{file_number}.jsonl")    
+                print(f'Wrote {idx-recored} records (({file_size/pow(1024,2):.3f}MB)) to {output_dir}{filename}_{file_number}.')
+                recored = idx
+                file_number += 1
+                file_size = 0
+                f = open(f"{output_dir}{filename}_{file_number}.jsonl", "w")
+            f.write(json_str + '\n')
+    if file_number==1:
+        print(f'Successfully wrote {len(data)} records ({file_size/pow(1024,2):.3f}MB) to {output_dir}{filename}')
+    else:
+        print(f'Successfully wrote {len(data)} records to {output_dir}{filename} (1-{file_number})')
     
 
 def main():
@@ -82,14 +100,14 @@ def main():
     parser.add_argument("--val", action='store_true', help="operate on validate data")
     parser.add_argument("--test", action='store_true', help="operate on test data")
 
-    parser.add_argument("--split", action='store_true', help="split training set to smaller subfiles")
+    # parser.add_argument("--split", action='store_true', help="split training set to smaller subfiles")
     
     args = parser.parse_args()
     
-    if args.split:
-        output_dir = f"{args.output_dir}/{args.section}/"
+#     if args.split:
+#         output_dir = f"{args.output_dir}/{args.section}/"
         
-        exit()
+#         exit()
 
     if not (args.train or args.val or args.test):
         args.train = args.val = args.test = True
@@ -113,7 +131,8 @@ def main():
             export_data(
                 data, 
                 output_dir = f"{args.output_dir}/{args.section}/", 
-                filename   = f"{key}.jsonl"
+                filename   = f"{key}",
+                file_size_limit = 100 
             )
         
 if __name__ == "__main__":
