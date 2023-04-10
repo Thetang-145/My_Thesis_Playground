@@ -1,0 +1,8 @@
+transformers
+pandas
+rouge
+
+
+torch 
+torchvision 
+torchaudio
