@@ -26,8 +26,11 @@ from collections import defaultdict
 import re
 import shutil
 import time
+from datetime import datetime
+from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
                               TensorDataset)
@@ -67,6 +70,7 @@ import math
 from tqdm import tqdm
 import re
 import timeit
+import logging
 
 ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig,  RobertaConfig)), ())
 
@@ -111,6 +115,7 @@ class ACEDatasetNER(Dataset):
 
         
         print(f"\n{bcolors.OKBLUE}Extracting Entity from: {bcolors.ENDC}{file_path}\n")
+        logging.info(f"Loading sentences from: {file_path}")
         assert os.path.isfile(file_path)
 
         self.file_path = file_path
@@ -327,6 +332,8 @@ class ACEDatasetNER(Dataset):
                         self.data.append(item)   
                         _start = _end                 
 
+        logging.info(f"Successfully Loaded {l_idx} samples")
+
         # exit()  
     def __len__(self):
         return len(self.data)
@@ -461,11 +468,12 @@ def _rotate_checkpoints(args, checkpoint_prefix, use_mtime=False):
         shutil.rmtree(checkpoint)
 
 def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True):
+    logging.info("Start evaluation")
 
     eval_output_dir = args.output_dir
 
     results = {}
-
+    
     eval_dataset = ACEDatasetNER(tokenizer=tokenizer, args=args, evaluate=True, do_test=do_test)
     ner_golden_labels = set(eval_dataset.ner_golden_labels)
     ner_tot_recall = eval_dataset.tot_recall
@@ -485,39 +493,62 @@ def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True):
     model.eval()
 
     start_time = timeit.default_timer() 
+    
+    logging.info(f"Start extracting NER from {args.test_file}")
+    run_record = []
+    # for batch in tqdm(eval_dataloader, desc=f"Extracting NER from {args.test_file}"):
+    total = len(eval_dataloader)
+    for idx, batch in tqdm(enumerate(eval_dataloader), total=total, desc=f"Extracting NER from {args.test_file}"):
+        run_record.append({
+            "batch": idx,
+        })
+        try:
+            indexs = batch[-2]
+            batch_m2s = batch[-1]
 
-    for batch in tqdm(eval_dataloader, desc=f"Extracting NER from {args.test_file}"):
-        indexs = batch[-2]
-        batch_m2s = batch[-1]
+            batch = tuple(t.to(args.device) for t in batch[:-2])
 
-        batch = tuple(t.to(args.device) for t in batch[:-2])
+            with torch.no_grad():
+                inputs = {'input_ids':      batch[0],
+                          'attention_mask': batch[1],
+                          'position_ids':   batch[2],
+                        #   'labels':         batch[3]
+                          }
 
-        with torch.no_grad():
-            inputs = {'input_ids':      batch[0],
-                      'attention_mask': batch[1],
-                      'position_ids':   batch[2],
-                    #   'labels':         batch[3]
-                      }
+                if args.model_type.find('span')!=-1:
+                    inputs['mention_pos'] = batch[4]
+                if args.use_full_layer!=-1:
+                    inputs['full_attention_mask']= batch[5]
+                    
+                for k, v in inputs.items():
+                    run_record[-1][k] = v.cpu().tolist()
 
-            if args.model_type.find('span')!=-1:
-                inputs['mention_pos'] = batch[4]
-            if args.use_full_layer!=-1:
-                inputs['full_attention_mask']= batch[5]
+                outputs = model(**inputs)
 
-            outputs = model(**inputs)
+                ner_logits = outputs[0]
+                ner_logits = torch.nn.functional.softmax(ner_logits, dim=-1)
+                ner_values, ner_preds = torch.max(ner_logits, dim=-1)
+                
+                run_record[-1]['ner_preds'] = ner_preds.cpu().tolist()
 
-            ner_logits = outputs[0]
-            ner_logits = torch.nn.functional.softmax(ner_logits, dim=-1)
-            ner_values, ner_preds = torch.max(ner_logits, dim=-1)
-
-            for i in range(len(indexs)):
-                index = indexs[i]
-                m2s = batch_m2s[i]
-                for j in range(len(m2s)):
-                    obj = m2s[j]
-                    ner_label = eval_dataset.ner_label_list[ner_preds[i,j]]
-                    if ner_label!='NIL':
-                        scores[(index[0], index[1])][(obj[0], obj[1])] = (float(ner_values[i,j]), ner_label)
+                for i in range(len(indexs)):
+                    index = indexs[i]
+                    m2s = batch_m2s[i]
+                    for j in range(len(m2s)):
+                        obj = m2s[j]
+                        ner_label = eval_dataset.ner_label_list[ner_preds[i,j]]
+                        if ner_label!='NIL':
+                            scores[(index[0], index[1])][(obj[0], obj[1])] = (float(ner_values[i,j]), ner_label)
+            run_record[-1]['status'] = "normal"
+        except Exception as e:      
+            run_record[-1]['status'] = "error"
+            logging.error(f"error msg: {str(e)}")
+            break
+    
+    now = datetime.now()
+    dt_string = now.strftime(f"%y%m%d_%H%M%S")
+    df = pd.DataFrame(run_record)
+    df.to_csv(f"log/run_getNER_status_{args.test_file[:-6]}.csv")
 
     cor = 0 
     tot_pred = 0
@@ -716,10 +747,18 @@ def main():
     parser.add_argument("--output_file",  default="None", type=str)
 
     args = parser.parse_args()
+    
+    log_dir = "log"
+    if not(Path(log_dir).exists()): os.system(f"mkdir -p {log_dir}")
+    logging.basicConfig(
+        filename=f'{log_dir}/getNER.log',
+        level=logging.INFO,
+        format='%(asctime)s:%(name)s:%(levelname)s: %(message)s',
+    )
 
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
         raise ValueError("Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(args.output_dir))
-
+    
     def create_exp_dir(path, scripts_to_save=None):
         if args.output_dir.endswith("test"):
             return

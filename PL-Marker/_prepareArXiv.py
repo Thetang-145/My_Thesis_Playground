@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import pandas as pd
 from pathlib import Path
 import spacy
 import argparse
@@ -22,13 +23,13 @@ def load_data(filepath, section):
             if section=="abstract":
                 dataset.append({
                     "doc_key": line["article_id"],
-                    "sentences": (" ".join(line["abstract_text"])).replace("<S>", "").replace("</S>", ""),
+                    "sentences": line["abstract_text"],
                 })
             elif section[:7]=="section":
                 sec_no = int(section[7:])-1
                 dataset.append({
                     "doc_key": line["article_id"],
-                    "sentences": " ".join(line["sections"][sec_no]),
+                    "sentences": line["sections"][sec_no],
                 })
         except: 
             cant_load += 1
@@ -36,24 +37,38 @@ def load_data(filepath, section):
     print(f"\nSuccessfully import {data_len-cant_load}/{data_len} samples")
     return dataset
 
+def drop_outlier(data, limit=200):
+    len_data = len(data)
+    data = pd.DataFrame(data)
+    data['num_sentences'] = [len(sent) for sent in (data['sentences'])]
+    data = data[data['num_sentences']<limit]
+    data = data.drop('num_sentences', axis=1)
+    data = data.to_dict('records')
+    print(f"Droped from {len_data} to {len(data)} ({len_data-len(data)} samples)")
+    return data
+
 def convert_data(data):
+    data = drop_outlier(data)
     num_docs = len(data)
     nlp = spacy.load("en_core_web_sm")
     conv_data = []
     for idx, doc in enumerate(data):
-        conv_data.append({})
-        doc_text = nlp(doc["sentences"])
+        # doc_text = nlp(doc["sentences"])
         sents, ners, rels = [], [], []
-        for sent in doc_text.sents:
-            token_sent = [str(tok) for tok in sent]
+        for sent in doc['sentences']:
+            sent = sent.replace("<S> ", "").replace(" </S>", "")
+            sent = nlp(sent)
+            token_sent = [token.text for token in sent]
             sents.append(token_sent)
             ners.append([])
             rels.append([])
+        conv_data.append({
+            "doc_key": doc["doc_key"],
+            "sentences": sents,
+            "ner": ners,
+            "relations": rels,
+        })
         print_progress(idx, num_docs,  desc='Converting data ')
-        conv_data[idx]["doc_key"] = doc["doc_key"]
-        conv_data[idx]["sentences"] = sents
-        conv_data[idx]["ner"] = ners
-        conv_data[idx]["relations"] = rels
     print()
     return conv_data
 
@@ -64,7 +79,7 @@ def export_data(data, output_dir, filename, file_size_limit=float('inf')):
     
     # Convert MB to bytes
     if file_size_limit!=float('inf'):
-        file_size_limit = int(file_size_limit*pow(1024,2)*0.9)
+        file_size_limit = int(file_size_limit*pow(1024,2)*0.95)
     
     file_size = 0
     file_number = 1
@@ -101,8 +116,8 @@ def main():
     parser.add_argument("--val", action='store_true', help="operate on validate data")
     parser.add_argument("--test", action='store_true', help="operate on test data")
 
-    # parser.add_argument("--split", action='store_true', help="split training set to smaller subfiles")
-    
+    parser.add_argument("--max_filesize", default=50, type=int, help="Maximum output file size (MB)")
+
     args = parser.parse_args()
     
 #     if args.split:
@@ -133,7 +148,7 @@ def main():
                 data, 
                 output_dir = f"{args.output_dir}/{args.section}/", 
                 filename   = f"{key}",
-                file_size_limit = 100 
+                file_size_limit = args.max_filesize 
             )
         
 if __name__ == "__main__":

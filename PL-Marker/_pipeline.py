@@ -1,8 +1,7 @@
 import os
 import argparse
 
-
-def getRE(dataset, section, data_split, gpu):
+def getRE(dataset, section, filename, gpu):
     os.system(f"CUDA_VISIBLE_DEVICES={gpu} python3 _getRE.py  --model_type bertsub  \
     --model_name_or_path /pretrained_model/scire-scibert  --do_lower_case  \
     --data_dir _sciner_models/{dataset}/{section}  \
@@ -10,11 +9,11 @@ def getRE(dataset, section, data_split, gpu):
     --max_seq_length 256  --max_pair_length 16  --save_steps 2500  \
     --do_eval  --eval_all_checkpoints  --eval_logsoftmax  \
     --fp16   \
-    --test_file {data_split}_ner.json  \
+    --test_file {filename}_ner.json  \
     --use_ner_results \
-    --output_dir _scire_models/{dataset}/{section}  --output_file {data_split}_re.json")
+    --output_dir _scire_models/{dataset}/{section}  --output_file {filename}_re.json")
         
-def getNER(dataset, section, data_split, gpu):
+def getNER(dataset, section, filename, gpu):
     os.system(f"CUDA_VISIBLE_DEVICES={gpu} python3  _getNER.py  --model_type bertspanmarker  \
     --model_name_or_path  pretrained_model/sciner-scibert  --do_lower_case  \
     --data_dir _prepared_data/{dataset}/{section}  \
@@ -22,8 +21,8 @@ def getNER(dataset, section, data_split, gpu):
     --max_seq_length 512  --save_steps 2000  --max_pair_length 256  --max_mention_ori_length 8    \
     --do_eval  --evaluate_during_training   --eval_all_checkpoints  \
     --fp16  --seed 42  --onedropout  --lminit  \
-    --test_file {data_split}.jsonl  \
-    --output_dir _sciner_models/{dataset}/{section}  --output_file {data_split}_ner.json \
+    --test_file {filename}.jsonl  \
+    --output_dir _sciner_models/{dataset}/{section}  --output_file {filename}_ner.json \
     --overwrite_output_dir  --output_results")
 
 def main():
@@ -66,22 +65,25 @@ def main():
         output = os.system(command)
             
     if not args.noner:
-        for k, v in data_split.items():
-            if v: 
-                if k=="train" and args.dataset=="arXiv":
-                    getNER(args.dataset, args.section, f'{k}1', args.gpu)  
-                    getNER(args.dataset, args.section, f'{k}2', args.gpu)  
-                else:
-                    getNER(args.dataset, args.section, k, args.gpu) 
-
-    if not args.norel:
+        prepared_dir = f"_prepared_data/{args.dataset}/{args.section}"
+        files = sorted(os.listdir(prepared_dir))
         for k, v in data_split.items():
             if v:
-                if k=="train" and args.dataset=="arXiv":
-                    getRE(args.dataset, args.section, f'{k}1', args.gpu)  
-                    getRE(args.dataset, args.section, f'{k}2', args.gpu)  
-                else:
-                    getRE(args.dataset, args.section, k, args.gpu)
+                for file in files:
+                    if file[:len(k)]==k: 
+                        getNER(args.dataset, args.section, file[:-6], args.gpu)  
+
+                        
+    if not args.norel:
+        prepared_dir = f"_sciner_models/{args.dataset}/{args.section}"
+        files = sorted(os.listdir(prepared_dir))
+        for k, v in data_split.items():
+            if v:
+                for file in files:
+                    if file[:len(k)]==k: 
+                        getRE(args.dataset, args.section, file[:-9], args.gpu)
+                        
+    exit()
                 
 if __name__ == "__main__":
     main()

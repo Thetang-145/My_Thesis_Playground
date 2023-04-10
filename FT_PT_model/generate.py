@@ -317,7 +317,8 @@ def main():
             eval_data = prepro_textData("MuP", v, section=args.evalSection, prototype=args.prototype)
 
         print_log(f"Start generate summary from {k} dataset")
-        result_df = generateSum(model, tokenizer, eval_data, 
+        result_df = generateSum(model, tokenizer, 
+                                eval_data.drop_duplicates(), 
                                 model_filename=f'{args.model}/{args.modelSection}_{args.modelinputType}')
         result_df = result_df.drop_duplicates()
         csv_file = f"record_result/generated_summary/{v}_MODEL-{args.modelSection}-{args.modelinputType}_EVALL-{args.evalSection}-{args.evalInputType}.csv"

@@ -136,6 +136,8 @@ def main():
     parser.add_argument("--train", action='store_true', help="operate on train data")
     parser.add_argument("--val", action='store_true', help="operate on validate data")
     parser.add_argument("--test", action='store_true', help="operate on test data")
+        
+    parser.add_argument("--max_filesize", default=50, type=int, help="Maximum output file size")
     
     args = parser.parse_args()
 
