@@ -11,17 +11,21 @@ def print_progress(curr, full, desc='', bar_size=50):
     sys.stdout.write(f"\r{desc}[{'='*bar}{' '*(bar_size-bar)}] {curr+1}/{full}")
     sys.stdout.flush()
     
-def load_data(filepath, column):
-
-    print(f"\nSuccessfully import {data_len-cant_load}/{data_len} samples")
+def load_data(filepath, doc_col, sentence_col):
+    df = pd.read_csv(filepath, index_col=0)
+    doc_key = list(df[doc_col])
+    sentences = list(df[sentence_col])
+    dataset= [{
+        "doc_key": doc_key[i],
+        "sentences": sentences[i],
+    } for i in range(len(doc_key))]
+    print(f"\nSuccessfully import {len(dataset)} samples")
     return dataset
 
 def convert_data(data):
     num_docs = len(data)
     nlp = spacy.load("en_core_web_sm")
-    conv_data = []
     for idx, doc in enumerate(data):
-        conv_data.append({})
         doc_text = nlp(doc["sentences"])
         sents, ners, rels = [], [], []
         for sent in doc_text.sents:
@@ -30,12 +34,11 @@ def convert_data(data):
             ners.append([])
             rels.append([])
         print_progress(idx, num_docs,  desc='Converting data ')
-        conv_data[idx]["doc_key"] = doc["doc_key"]
-        conv_data[idx]["sentences"] = sents
-        conv_data[idx]["ner"] = ners
-        conv_data[idx]["relations"] = rels
+        doc["sentences"] = sents
+        doc["ner"] = ners
+        doc["relations"] = rels
     print()
-    return conv_data
+    return data
 
 def export_data(data, output_dir, filename, append=False):
     print("Writing prepared data to jsonl file")
@@ -53,48 +56,35 @@ def export_data(data, output_dir, filename, append=False):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--section", default='abstract', type=str,
-                        help="which data to be prepated: abstract, section_1")
-    parser.add_argument("--output_dir", default='_prepared_data/arXiv', type=str,
-                        help="Directory of prepared data")
+    parser.add_argument("--file_path",  required=True, type=str,
+                        help="File path of input data")
+    parser.add_argument("--doc_col",  required=True, type=str, help="")
+    parser.add_argument("--sentence_col",  required=True, type=str, help="")
     
-    parser.add_argument("--train", action='store_true', help="operate on train data")
-    parser.add_argument("--val", action='store_true', help="operate on validate data")
-    parser.add_argument("--test", action='store_true', help="operate on test data")
-
-    parser.add_argument("--split", action='store_true', help="split training set to smaller subfiles")
-    
+    parser.add_argument("--output_filename", type=str, help="Directory of prepared data")   
+    parser.add_argument("--output_dir", default='_prepared_data/csv', type=str, help="Directory of prepared data")    
     args = parser.parse_args()
     
-    if args.split:
-        output_dir = f"{args.output_dir}/{args.section}/"
-        
-        exit()
-
-    if not (args.train or args.val or args.test):
-        args.train = args.val = args.test = True
-        
-    runPrepare = {
-        "train": args.train,
-        "val": args.val,
-        "test": args.test,
-    }
-        
     
     main_path = str((Path().absolute()).parents[0])
-    dataset_path = main_path+"/dataset_arXiv/"
+    dataset_path = f"{main_path}/{args.file_path}"
+    # dataset_path = args.file_path
+    
+    if args.output_filename is None:
+        args.output_filename = args.file_path.split("/")[-1][:-4]
+        print(args.output_filename)
     
     
-    for key, val in runPrepare.items():
-        if val:
-            print(f"{'*'*25} Processing {key} data {'*'*25}")
-            data = load_data(f"{dataset_path}{key}.txt", args.section)
-            data = convert_data(data)
-            export_data(
-                data, 
-                output_dir = f"{args.output_dir}/{args.section}/", 
-                filename   = f"{key}.jsonl"
-            )
+    print(f"{'*'*25} Processing csv data {'*'*25}")
+    print(f"from {dataset_path}")
+    data = load_data(dataset_path, args.doc_col, args.sentence_col)
+    data = convert_data(data)
+    export_data(
+        data, 
+        output_dir = f"{args.output_dir}/", 
+        filename   = f"{args.output_filename}.jsonl"
+    )
+    
         
 if __name__ == "__main__":
     main()
