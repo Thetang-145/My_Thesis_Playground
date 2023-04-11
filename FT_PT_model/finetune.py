@@ -15,6 +15,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 from transformers import BartForConditionalGeneration, BartTokenizer
 from transformers import LEDForConditionalGeneration, LEDTokenizer
+from transformers import AutoTokenizer, AutoModel
 from transformers import AdamW
 from rouge import Rouge
 
@@ -40,15 +41,17 @@ MODELS = {
     "led-base": "allenai/longformer-base-4096"
 }
 # Define hyperparameters
-MAX_INPUT_LENGTH = 512
-MAX_OUPUT_LENGTH = 512
-TRIAN_BATCH_SIZE = 8
-VAL_BATCH_SIZE   = 8
-EVAL_BATCH_SIZE  = 8
+MAX_INPUT_LENGTH  = 512
+MAX_OUTPUT_LENGTH = 512
+TRIAN_BATCH_SIZE  = 8
+VAL_BATCH_SIZE    = 8
+EVAL_BATCH_SIZE   = 8
+EVAL_FREQUENCY    = 1000
 NUM_EPOCH = 5
 NUM_BEAMS = 4
 LEARNING_RATE = 1e-5
 FLOAT_PRECISION = torch.float16
+
 
 def print_progress(curr, full, desc='', bar_size=30):    
     bar = int((curr+1)/full*bar_size)
@@ -66,7 +69,7 @@ def getInputDataset(dataset, data_split, section):
     print(f"Loading data from: {filepath}")
     with open(filepath, 'r') as json_file:
         json_list = list(json_file)
-    logging.info(f"Loaded {len(input_dataset_list)} kg inputs from {filepath}")
+    logging.info(f"Loaded {len(json_list)} kg inputs from {filepath}")
     return [json.loads(json_str) for json_str in json_list]
 
 def addTripEnt(allEnt, tripEnt, ent):
@@ -170,7 +173,7 @@ def prepro_KGData(dataset, data_split, section, prototype):
     # input_df.set_index('paper_id', inplace=True)
     # target_df.set_index('paper_id', inplace=True)
     merged_df = input_df.merge(target_df, how='inner', on='paper_id')
-    logging.info(f"Finished preprocessing {len(merged_df)} kg data")
+    logging.info(f"Merge input and target to {len(merged_df)} samples")
     return removeIssue(merged_df.reset_index())
 
 def getDataset(dataset, data_split, section, prototype):
@@ -202,8 +205,8 @@ def getDataset(dataset, data_split, section, prototype):
             if i>=prototype-1: break
     return pd.DataFrame(dataset_list)
 
-def prepro_textData(data_split, section, prototype):
-    dataset_df = getDataset(data_split, section, prototype
+def prepro_textData(dataset, data_split, section, prototype):
+    dataset_df = getDataset(dataset, data_split, section, prototype)
     logging.info(f"Loaded and Finished preprocessing {len(dataset_df)} text data")
     return removeIssue(dataset_df)
 
@@ -217,7 +220,7 @@ class MyDataset(Dataset):
 
     def __getitem__(self, index):
         input_tokens = self.tokenizer.encode(self.input[index], padding='max_length', max_length=MAX_INPUT_LENGTH, truncation=True, return_tensors='pt')
-        target_tokens = self.tokenizer.encode(self.target[index], padding='max_length', max_length=MAX_OUPUT_LENGTH, truncation=True, return_tensors='pt')
+        target_tokens = self.tokenizer.encode(self.target[index], padding='max_length', max_length=MAX_OUTPUT_LENGTH, truncation=True, return_tensors='pt')
         
         paper_id = self.paper_id[index]
         input_ids = input_tokens.squeeze()
@@ -229,6 +232,7 @@ class MyDataset(Dataset):
 
     def __len__(self):
         return len(self.data)
+
 
 def validation(model, tokenizer, val_loader):
     model.eval()
@@ -283,7 +287,7 @@ def contrastive_loss(logits, labels, margin=1.0):
     return loss_contrastive
 
 
-def train(model, tokenizer, train_data, val_data, model_filename, save_iter=500):
+def train(model, tokenizer, train_data, val_data, model_filename, save_iter=EVAL_FREQUENCY):
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
     # model.config.loss_fct = contrastive_loss
@@ -435,70 +439,70 @@ def main():
     DEVICE = torch.device(f'cuda:{args.cuda}' if torch.cuda.is_available() else 'cpu')
     device_name = torch.cuda.get_device_name(args.cuda) if torch.cuda.is_available() else 'CPU'
     
-    MODEL_NAME = MODELS[args.model]
+    MODEL_PATH = MODELS[args.model]
     MODEL_CAT  = args.model.split("-")[0]
     
-    if MODEL_CAT=="bart":
-        tokenizer = BartTokenizer.from_pretrained(MODEL_NAME)
-        model = BartForConditionalGeneration.from_pretrained(MODEL_NAME)
-    elif MODEL_CAT=="led":
-        tokenizer = LEDTokenizer.from_pretrained(MODEL_NAME)
-        model = LEDForConditionalGeneration.from_pretrained(MODEL_NAME)
+    print_log(f"Loading {args.model} from {MODEL_PATH}")
+    if MODEL_CAT=='bart':
+        tokenizer = BartTokenizer.from_pretrained(MODEL_PATH)
+        model = BartForConditionalGeneration.from_pretrained(MODEL_PATH)
     else:
-        print("No this model")
-        exit()
-        
-    if args.train:
-        print("Loading Train data")
-        logging.info(f"Loading {args.section} {args.inputType} from {args.dataset} dataset")
-        if args.inputType == 'kg':
-            train_data = prepro_KGData(args.dataset, "train", section=args.section, prototype=args.prototype)
-            val_data = prepro_KGData(args.dataset, "val", section=args.section, prototype=args.prototype)
-        else:
-            train_data = prepro_textData(args.dataset, "train", section=args.section, prototype=args.prototype) 
-            val_data = prepro_textData(args.dataset, "val", section=args.section, prototype=args.prototype)
-        if args.saveData: 
-            train_data.to_csv(f"model/trainDataset_{args.section}_{args.inputType}.csv")
-            val_data.to_csv(f"model/valDataset_{args.section}_{args.inputType}.csv")
-        
-        print(f"Training data on {DEVICE} ({device_name})")
-        logging.info(f"Start training on {DEVICE} ({device_name})")
-        logging.info(f"""Hyper-parameters:
-            Model = {args.model}
-            Max_input_length = {MAX_INPUT_LENGTH}
-            Max_output_length = {MAX_OUPUT_LENGTH}
-            Train_BS = {TRIAN_BATCH_SIZE}
-            Num_epoch = {NUM_EPOCH}
-            Num_beams = {NUM_BEAMS}
-            lr = {LEARNING_RATE}""")
-        
-        modelSave_dir = f"model/{args.model}"
-        if not(Path(modelSave_dir).exists()): os.system(f"mkdir -p {modelSave_dir}")
-        trainRec = train(
-            model, tokenizer, train_data, val_data,
-            model_filename=f'{args.model}/{args.section}_{args.inputType}'
-        )
-        trainRec.to_csv(f"record_result/train_record/{args.model}_{args.section}_{args.inputType}.csv")
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+        model = AutoModel.from_pretrained(MODEL_PATH)
 
-    if args.genSum:
-        dataset_dict = {
-            "validation": "val",
-            "testing"   : "test"
-        }
-        for k, v in dataset_dict.items():
-            if args.inputType == 'kg':
-                eval_data = prepro_KGData(args.dataset, v, section=args.section, prototype=args.prototype)
-            else:
-                eval_data = prepro_textData(args.dataset, v, section=args.section, prototype=args.prototype)
+    # if args.train:
+    print("Loading Train data")
+    logging.info(f"Loading {args.section} {args.inputType} from {args.dataset} dataset")
+    if args.inputType == 'kg':
+        train_data = prepro_KGData(args.dataset, "train", section=args.section, prototype=args.prototype)
+        val_data = prepro_KGData(args.dataset, "val", section=args.section, prototype=args.prototype)
+    else:
+        train_data = prepro_textData(args.dataset, "train", section=args.section, prototype=args.prototype) 
+        val_data = prepro_textData(args.dataset, "val", section=args.section, prototype=args.prototype)
+    if args.saveData: 
+        train_data.to_csv(f"model/trainDataset_{args.section}_{args.inputType}.csv")
+        val_data.to_csv(f"model/valDataset_{args.section}_{args.inputType}.csv")
 
-            print_log(f"Start generate summary from {k} dataset")          
-            result_df = generateSum(model, tokenizer, eval_data, model_filename=f'{args.model}/{args.section}_{args.inputType}')
-            csv_file = f"record_result/generated_summary/{v}_{args.section}_{args.inputType}.csv"
-            result_df.to_csv(csv_file)
-            print_log(f"Saved {len(result_df)} summaries of {k} dataset to {csv_file}")
+    print(f"Training data on {DEVICE} ({device_name})")
+    logging.info(f"Start training on {DEVICE} ({device_name})")
+    logging.info(f"""Hyper-parameters:
+        Model = {args.model}
+        Max_input_length = {MAX_INPUT_LENGTH}
+        Max_output_length = {MAX_OUTPUT_LENGTH}
+        Train_BS = {TRIAN_BATCH_SIZE}
+        Num_epoch = {NUM_EPOCH}
+        Num_beams = {NUM_BEAMS}
+        lr = {LEARNING_RATE}""")
+
+    modelSave_dir = f"model/{args.model}"
+    if not(Path(modelSave_dir).exists()): os.system(f"mkdir -p {modelSave_dir}")
+    trainRec = train(
+        model, tokenizer, train_data, val_data,
+        model_filename=f'{args.model}/{args.section}_{args.inputType}'
+    )
+    trainRec.to_csv(f"record_result/train_record/{args.model}_{args.section}_{args.inputType}.csv")
+
+#     if args.genSum:
+#         dataset_dict = {
+#             "validation": "val",
+#             "testing"   : "test"
+#         }
+#         for k, v in dataset_dict.items():
+#             if args.inputType == 'kg':
+#                 eval_data = prepro_KGData(args.dataset, v, section=args.section, prototype=args.prototype)
+#             else:
+#                 eval_data = prepro_textData(args.dataset, v, section=args.section, prototype=args.prototype)
+
+#             print_log(f"Start generate summary from {k} dataset")          
+#             result_df = generateSum(model, tokenizer, eval_data, model_filename=f'{args.model}/{args.section}_{args.inputType}')
+#             csv_file = f"record_result/generated_summary/{v}_{args.section}_{args.inputType}.csv"
+#             result_df.to_csv(csv_file)
+#             print_log(f"Saved {len(result_df)} summaries of {k} dataset to {csv_file}")
 
         
         
 if __name__ == "__main__":
     main()
     print_log("FINISH ALL PROCESSES")
+    
+    

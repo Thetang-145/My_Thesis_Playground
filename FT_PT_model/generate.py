@@ -31,6 +31,7 @@ REL_TYPES = {
 RAWDATAFILES = {
     "train": "training_complete.jsonl",
     "val": "validation_complete.jsonl",
+    "test": "testing_with_paper_release.jsonl"
 }
 MODELS = {
     "bart-large": "facebook/bart-large",
@@ -38,7 +39,7 @@ MODELS = {
     "led-base": "allenai/longformer-base-4096"
 }
 MAX_INPUT_LENGTH = 512
-MAX_OUPUT_LENGTH = 512
+MAX_OUTPUT_LENGTH = 512
 EVAL_BATCH_SIZE  = 8
 NUM_BEAMS = 4
 
@@ -59,6 +60,7 @@ def getInputDataset(dataset, data_split, section):
     print(f"Loading data from: {filepath}")
     with open(filepath, 'r') as json_file:
         json_list = list(json_file)
+    logging.info(f"Loaded {len(json_list)} kg inputs from {filepath}")
     return [json.loads(json_str) for json_str in json_list]
 
 def addTripEnt(allEnt, tripEnt, ent):
@@ -125,6 +127,7 @@ def getInputDF(dataset, data_split, section, prototype):
         input_dataset_list.append(row)
         if isinstance(prototype, int):
             if i>=prototype-1: break
+    logging.info(f"Preprocessed {len(input_dataset_list)} inputs")
     return pd.DataFrame(input_dataset_list)
 
 
@@ -144,6 +147,7 @@ def getTargetDF(dataset, data_split, prototype):
         print_progress(i, data_len, desc=f'Loading summary ({data_split})')
         if isinstance(prototype, int):
             if i>=prototype-1: break
+    logging.info(f"Loaded {len(dataset_list)} targets from {filepath}")
     return pd.DataFrame(dataset_list)
     
 def removeIssue(df):
@@ -151,6 +155,7 @@ def removeIssue(df):
     remove_index = []
     for paper_id in list(issue_doc['paper_id']):
         remove_index += list(df[df['paper_id']==paper_id].index)
+    logging.info(f"Removed {len(remove_index)} issue data")
     return df.drop(index=remove_index)
 
 def prepro_KGData(dataset, data_split, section, prototype):
@@ -159,6 +164,7 @@ def prepro_KGData(dataset, data_split, section, prototype):
     # input_df.set_index('paper_id', inplace=True)
     # target_df.set_index('paper_id', inplace=True)
     merged_df = input_df.merge(target_df, how='inner', on='paper_id')
+    logging.info(f"Merge input and target to {len(merged_df)} samples")
     return removeIssue(merged_df.reset_index())
 
 def getDataset(dataset, data_split, section, prototype):
@@ -192,6 +198,7 @@ def getDataset(dataset, data_split, section, prototype):
 
 def prepro_textData(data_split, section, prototype):
     dataset_df = getDataset(data_split, section, prototype)
+    logging.info(f"Loaded and Finished preprocessing {len(dataset_df)} text data")
     return removeIssue(dataset_df)
 
 class MyDataset(Dataset):
@@ -204,7 +211,7 @@ class MyDataset(Dataset):
 
     def __getitem__(self, index):
         input_tokens = self.tokenizer.encode(self.input[index], padding='max_length', max_length=MAX_INPUT_LENGTH, truncation=True, return_tensors='pt')
-        target_tokens = self.tokenizer.encode(self.target[index], padding='max_length', max_length=MAX_OUPUT_LENGTH, truncation=True, return_tensors='pt')
+        target_tokens = self.tokenizer.encode(self.target[index], padding='max_length', max_length=MAX_OUTPUT_LENGTH, truncation=True, return_tensors='pt')
         
         paper_id = self.paper_id[index]
         input_ids = input_tokens.squeeze()
@@ -309,20 +316,24 @@ def main():
         "testing"   : "test"
     }
     for k, v in dataset_dict.items():
-        if args.evalSection=='summary' and v==test: continue
+        if args.evalSection=='summary' and v=='test': continue
         
         if args.evalInputType == 'kg':
             eval_data = prepro_KGData("MuP", v, section=args.evalSection, prototype=args.prototype)
         else:
             eval_data = prepro_textData("MuP", v, section=args.evalSection, prototype=args.prototype)
+            
+        if v=='test': eval_data['target_seq'] = "<PAD>"            
 
         print_log(f"Start generate summary from {k} dataset")
         result_df = generateSum(model, tokenizer, 
                                 eval_data.drop_duplicates(), 
                                 model_filename=f'{args.model}/{args.modelSection}_{args.modelinputType}')
         result_df = result_df.drop_duplicates()
-        csv_file = f"record_result/generated_summary/{v}_MODEL-{args.modelSection}-{args.modelinputType}_EVALL-{args.evalSection}-{args.evalInputType}.csv"
-        result_df.to_csv(csv_file)
+        csv_dir = f"generated_summary/{v}/{args.model}/"
+        csv_file = f"MODEL-{args.modelSection}-{args.modelinputType}_EVAL-{args.evalSection}-{args.evalInputType}.csv"
+        if not(Path(csv_dir).exists()): os.system(f"mkdir -p {csv_dir}")
+        result_df.to_csv(csv_dir+csv_file)
         print_log(f"Saved {len(result_df)} summaries of {k} dataset to {csv_file}")
 
         
@@ -330,3 +341,5 @@ def main():
 if __name__ == "__main__":
     main()
     print_log("FINISH ALL PROCESSES")
+    
+    
