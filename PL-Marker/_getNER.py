@@ -542,7 +542,8 @@ def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True, sa
             run_record[-1]['status'] = "normal"
         except Exception as e:      
             run_record[-1]['status'] = "error"
-            logging.error(f"error msg: {str(e)}")
+            print(f"Error msg: {str(e)}")
+            logging.error(f"Error msg: {str(e)}")
             break
     
     if save_running:
