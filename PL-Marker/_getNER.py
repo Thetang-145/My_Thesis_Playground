@@ -467,7 +467,7 @@ def _rotate_checkpoints(args, checkpoint_prefix, use_mtime=False):
     for checkpoint in checkpoints_to_be_deleted:
         shutil.rmtree(checkpoint)
 
-def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True):
+def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True, save_running=False):
     logging.info("Start evaluation")
 
     eval_output_dir = args.output_dir
@@ -545,10 +545,11 @@ def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True):
             logging.error(f"error msg: {str(e)}")
             break
     
-    now = datetime.now()
-    dt_string = now.strftime(f"%y%m%d_%H%M%S")
-    df = pd.DataFrame(run_record)
-    df.to_csv(f"log/run_getNER_status_{args.test_file[:-6]}.csv")
+    if save_running:
+        now = datetime.now()
+        dt_string = now.strftime(f"%y%m%d_%H%M%S")
+        df = pd.DataFrame(run_record)
+        df.to_csv(f"log/run_getNER_status_{args.test_file[:-6]}.csv")
 
     cor = 0 
     tot_pred = 0
