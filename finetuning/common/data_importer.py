@@ -31,10 +31,9 @@ def print_progress(curr, full, desc='', bar_size=30):
     if curr+1==full: print()
 
             
-def getInputDataset(args, data_split):
-    
+def getInputDataset(args, data_split, section):
     main_path = str((Path().absolute()).parents[0])
-    filepath = f"{main_path}/PL-Marker/_scire_models/{args.dataset}/{args.section}/{data_split}_re.json"
+    filepath = f"{main_path}/PL-Marker/_scire_models/{args.dataset}/{section}/{data_split}_re.json"
     print(f"Loading data from: {filepath}")
     with open(filepath, 'r') as json_file:
         json_list = list(json_file)
@@ -91,8 +90,8 @@ def getFreeEntSeq(freeEnt):
             freeEntSeq += f", and {ents[-1]}. "
     return freeEntSeq
 
-def getInputDF(args, data_split):
-    input_dataset = getInputDataset(args, data_split)
+def getInputDF(args, data_split, section):
+    input_dataset = getInputDataset(args, data_split, section)
     input_dataset_list = []
     for i, data in enumerate(input_dataset):
         tripEnt, freeEnt, tripSeq = getTripSeq(data)
@@ -137,8 +136,8 @@ def removeIssue(df):
     logging.info(f"Removed {len(remove_index)} issue data")
     return df.drop(index=remove_index)
 
-def prepro_KGData(args, data_split):
-    input_df = getInputDF(args, data_split)
+def prepro_KGData(args, data_split, section):
+    input_df = getInputDF(args, data_split, section)
     target_df = getTargetDF(args, data_split)
     # input_df.set_index('paper_id', inplace=True)
     # target_df.set_index('paper_id', inplace=True)
@@ -146,7 +145,7 @@ def prepro_KGData(args, data_split):
     logging.info(f"Merge input and target to {len(merged_df)} samples")
     return removeIssue(merged_df.reset_index())
 
-def getDataset(args, data_split):
+def getDataset(args, data_split, section):
     main_path = str((Path().absolute()).parents[0])    
     filepath = f"{main_path}/dataset_MuP/{RAWDATAFILES[data_split]}"
     with open(filepath, 'r') as json_file:
@@ -156,17 +155,17 @@ def getDataset(args, data_split):
     else: data_len = len(json_list)
     for i, json_str in enumerate(json_list):
         data = json.loads(json_str)
-        if args.section=='abstract':
+        if section=='abstract':
             dataset_list.append({
                 "paper_id": data["paper_id"], 
                 "input_seq": data["paper"]["abstractText"], 
                 "target_seq": data["summary"]
             })
-        elif isinstance(args.section, int):
+        elif isinstance(section, int):
             try:
                 dataset_list.append({
                     "paper_id": data["paper_id"], 
-                    "input_seq": data["paper"]["section"][args.section-1], 
+                    "input_seq": data["paper"]["section"][section-1], 
                     "target_seq": data["summary"]
                 })
             except:
@@ -176,7 +175,7 @@ def getDataset(args, data_split):
             if i>=args.prototype-1: break
     return pd.DataFrame(dataset_list)
 
-def prepro_textData(args, data_split):
-    dataset_df = getDataset(args, data_split)
+def prepro_textData(args, data_split, section):
+    dataset_df = getDataset(args, data_split, section)
     logging.info(f"Loaded and Finished preprocessing {len(dataset_df)} text data")
     return removeIssue(dataset_df)

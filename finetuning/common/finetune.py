@@ -50,7 +50,7 @@ class MyDataset(Dataset):
         return len(self.data)
 
 
-def validation(model, tokenizer, val_loader):
+def validation(args, model, tokenizer, val_loader, device):
     model.eval()
     rouge_f = {
         'rouge-1': [],
@@ -58,7 +58,8 @@ def validation(model, tokenizer, val_loader):
         'rouge-l': [],
     }
     with torch.no_grad():
-        for idx, batch in enumerate(val_loader):
+        for batch in tqdm(val_loader, desc=f"validating"):
+        # for idx, batch in enumerate(val_loader):
             # Forward pass through model
             paper_id, input_ids, attention_mask, target_ids = batch
             input_ids = input_ids.to(device)
@@ -68,7 +69,7 @@ def validation(model, tokenizer, val_loader):
                 input_ids=input_ids, 
                 attention_mask=attention_mask, 
                 max_length=tokenizer.model_max_length, 
-                num_beams=NUM_BEAMS
+                num_beams=args.num_beams
             )
             # Compute evaluation metrics
             hyps = [tokenizer.decode(ids, skip_special_tokens=True) for ids in generated_ids]
@@ -78,7 +79,7 @@ def validation(model, tokenizer, val_loader):
             # print(len(refs[0]), refs[0])
             scores = Rouge().get_scores(hyps, refs)
             for k in rouge_f.keys(): rouge_f[k]+=[score[k]['f'] for score in scores]
-            if (idx+1)>=100: break
+            # if (idx+1)>=100: break
         for k in rouge_f.keys(): rouge_f[k]=sum(rouge_f[k])/len(rouge_f[k])
     return rouge_f
 
@@ -102,12 +103,7 @@ def contrastive_loss(logits, labels, margin=1.0):
 
     return loss_contrastive
 
-
-def train(args, train_data, val_data, model_filename):
-    
-    device = torch.device(f'cuda:{args.cuda}' if torch.cuda.is_available() else 'cpu')
-    device_name = torch.cuda.get_device_name(args.cuda) if torch.cuda.is_available() else 'CPU'
-    
+def load_model(args):    
     model_path = MODELS[args.model]
     model_cat  = args.model.split("-")[0]
     
@@ -118,7 +114,15 @@ def train(args, train_data, val_data, model_filename):
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_path)
         model = AutoModel.from_pretrained(model_path)
-
+    
+    return tokenizer, model
+        
+def train(args, train_data, val_data, model_filename):    
+    
+    device = torch.device(f'cuda:{args.cuda}' if torch.cuda.is_available() else 'cpu')
+    device_name = torch.cuda.get_device_name(args.cuda) if torch.cuda.is_available() else 'CPU'
+    
+    tokenizer, model = load_model(args)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate)
     # model.config.loss_fct = contrastive_loss    
     
@@ -129,19 +133,25 @@ def train(args, train_data, val_data, model_filename):
     val_loader = DataLoader(val_dataset, batch_size=args.val_batch_size)
 
     print(f"Training data on {device} ({device_name})")
-    model.to(device=device)    
+    model.to(device)    
 
     eval_record = []
     max_rouge1 = 0
     # max_rougeAvg = 0
-    iter = 0
+    total_iter = len(train_loader)#*args.num_epoch
     for epoch in range(args.num_epoch):
+        iter = 0
         logging.info(f"Training Epoch:{epoch+1}")
-        start_time_ep = timeit.default_timer() 
+        start_time_ep = timeit.default_timer()
         for batch in tqdm(train_loader, desc=f"Fine-tuning epoch:{epoch+1}"):
-            model.train()
             iter += 1
+            model.train()
             paper_id, input_ids, attention_mask, target_ids = batch
+            if iter in [502, 503]: 
+                logging.info(f"Iteration: {iter}")
+                logging.info(f"Paper id: {paper_id}") 
+                logging.info(f"Input id: {input_ids}")
+                continue
             input_ids = input_ids.to(device)
             attention_mask = attention_mask.to(device)
             target_ids = target_ids.to(device)
@@ -156,14 +166,13 @@ def train(args, train_data, val_data, model_filename):
             optimizer.zero_grad()
 
             # Validation
-            if iter%args.eval_frequency==0:
+            if iter%args.eval_frequency==0 or iter%total_iter==0:
+                logging.info(f"Start validating at Epoch: {epoch+1} Iteration: {iter} ")
                 start_time_val = timeit.default_timer() 
-                rouge_f = validation(model, tokenizer, val_loader)
+                rouge_f = validation(args, model, tokenizer, val_loader, device)
                 valTime = timeit.default_timer() - start_time_val
                 valTime = str(timedelta(seconds=valTime))[:8]
-                logging.info(f"""Validating 
-                Epoch: {epoch+1} Iteration: {iter+1} 
-                TimeUsed: {valTime}""")
+                logging.info(f"""Finished validating using {valTime}""")
                 rouge_list = [rouge_f[k] for k in rouge_f.keys()]
                 rouge_avg = sum(rouge_list)/len(rouge_list)
                 eval_record.append({
@@ -196,28 +205,19 @@ def train(args, train_data, val_data, model_filename):
 
     return pd.DataFrame(eval_record)
 
-def generateSum(model, tokenizer, test_data, model_filename):
+def generateSum(args, test_data, model_filename):
     
     device = torch.device(f'cuda:{args.cuda}' if torch.cuda.is_available() else 'cpu')
     device_name = torch.cuda.get_device_name(args.cuda) if torch.cuda.is_available() else 'CPU'
     
-    model_path = MODELS[args.model]
-    model_cat  = args.model.split("-")[0]
-    
-    print_log(f"Loading {args.model} from {model_path}")
-    if model_cat=='bart':
-        tokenizer = BartTokenizer.from_pretrained(model_path)
-        model = BartForConditionalGeneration.from_pretrained(model_path)
-    else:
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
-        model = AutoModel.from_pretrained(model_path)
+    tokenizer, model = load_model(args)
         
     test_dataset = MyDataset(args, test_data, tokenizer)
-    test_loader = DataLoader(test_dataset, batch_size=args.eval_batch_size)
-    
+    test_loader = DataLoader(test_dataset, batch_size=args.eval_batch_size)    
       
     # bestScores = ['bestRouge1', 'bestRougeAvg']
     # for i, best in enumerate(bestScores):
+    best = 'best'
     chechpoint = f'model/{model_filename}_{best}.pt'
     print_log(f"Start generating summary using chechpoint: {chechpoint}")
     model.load_state_dict(torch.load(chechpoint))

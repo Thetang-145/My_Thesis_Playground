@@ -57,11 +57,11 @@ def main():
     print("Loading Train data")
     logging.info(f"Loading {args.section} {args.inputType} from {args.dataset} dataset")
     if args.inputType == 'kg':
-        train_data = dt_imp.prepro_KGData(args, "train")
-        val_data = dt_imp.prepro_KGData(args, "val")
+        train_data = dt_imp.prepro_KGData(args, "train", section=args.section)
+        val_data = dt_imp.prepro_KGData(args, "val", section=args.section)
     else:
-        train_data = dt_imp.prepro_textData(args, "train")
-        val_data = dt_imp.prepro_textData(args, "val")
+        train_data = dt_imp.prepro_textData(args, "train", section=args.section)
+        val_data = dt_imp.prepro_textData(args, "val", section=args.section)
     if args.saveData: 
         train_data.to_csv(f"model/trainDataset_{args.section}_{args.inputType}{prototype}.csv")
         val_data.to_csv(f"model/valDataset_{args.section}_{args.inputType}{prototype}.csv")
