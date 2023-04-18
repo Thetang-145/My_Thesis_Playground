@@ -47,7 +47,7 @@ def addTripEnt(allEnt, tripEnt, ent):
         tripEnt[ent] = None
     return tripEnt
 
-def getTripSeq(data, sym=True):
+def getTripSeq(data, sym=False):
     all_sentences = [j for i in data["sentences"] for j in i]
     flatten_ner = [j for i in data["predicted_ner"] for j in i]
     flatten_re  = [j for i in data["predicted_re"] for j in i[1]]

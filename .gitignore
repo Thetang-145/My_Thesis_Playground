@@ -12,6 +12,7 @@ adapter-transformers/
 # Model's parameters
 **/saved_parameters
 **/*.pt
+**/*.ckpt
 
 # Dataset
 dataset*

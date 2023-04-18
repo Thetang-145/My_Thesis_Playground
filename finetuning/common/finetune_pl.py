@@ -13,23 +13,7 @@ from transformers import BartForConditionalGeneration, BartTokenizer
 from transformers import AutoTokenizer, AutoModel
 from rouge import Rouge
 
-from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.loggers import NeptuneLogger
-
-neptune_logger = NeptuneLogger(
-    project="thetang/BART-Finetune",
-    api_key="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vbmV3LXVpLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIyMWIzODIzZi05ZmZmLTRiNWYtYmM3Mi04MTI4NTcyYzhmN2UifQ==",
-    log_model_checkpoints=False,
-)
-
-PARAMS = {
-    "batch_size": 8,
-    "lr": 3e-5,
-    "max_epochs": 3,
-    "max_": 3,
-}
-
-neptune_logger.log_hyperparams(params=PARAMS)
+from pytorch_lightning import LightningModule, LightningDataModule, Trainer
 
 
 class MyDataset(Dataset):
@@ -57,6 +41,12 @@ class MyDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
+class MuPDataModule(LightningDataModule):
+    def __init__(self, train_df, test_df, tokenizer):
+        super().__init__()
+        self.train_df = train_df
+    
+    
 class BARTFineTuner(LightningModule):
     def __init__(self, model_name_or_path, args):
         super().__init__()
