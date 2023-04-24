@@ -93,14 +93,14 @@ class DataModule(LightningDataModule):
     def train_dataloader(self):
         return DataLoader(
             self.train_dataset,
-            batch_size=self.args.train_batch_size,
+            batch_size=self.args.batch_size,
             shuffle=True
         )
             
     def val_dataloader(self):
         return DataLoader(
             self.val_dataset,
-            batch_size=self.args.val_batch_size,
+            batch_size=self.args.batch_size,
             shuffle=False
         )
 
@@ -110,6 +110,8 @@ class BartModel(LightningModule):
         self.model = BartForConditionalGeneration.from_pretrained(MODELS[args.model])
         self.tokenizer = BartTokenizer.from_pretrained(MODELS[args.model])
         self.args = args
+        self.model.resize_token_embeddings(len(self.tokenizer))
+
         
     def forward(self, input_ids, attention_mask, target_ids, target_attention_mask):
         output = self.model(

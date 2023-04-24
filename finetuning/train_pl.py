@@ -6,7 +6,7 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
-import common.data_importer as dt_imp
+import common.data_importer as data_importer
 from common.finetune_pl_2 import DataModule, BartModel
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -31,12 +31,12 @@ def main():
     # Hyper-parameter
     parser.add_argument('--max_input_length', default=512, type=int, help="x")
     parser.add_argument('--max_output_length', default=512, type=int, help="x")
-    parser.add_argument('--train_batch_size', default=8, type=int, help="")    
-    parser.add_argument('--val_batch_size', default=8, type=int, help="")    
-    parser.add_argument('--eval_batch_size', default=8, type=int, help="")    
-    parser.add_argument('--eval_frequency', default=1000, type=int, help="")    
+    parser.add_argument('--batch_size', default=8, type=int, help="")    
+    # parser.add_argument('--val_batch_size', default=8, type=int, help="")    
+    # parser.add_argument('--eval_batch_size', default=8, type=int, help="")    
+    # parser.add_argument('--eval_frequency', default=1000, type=int, help="")    
     parser.add_argument('--num_epoch', default=5, type=int, help="")    
-    parser.add_argument('--num_beams', default=3, type=int, help="")    
+    parser.add_argument('--num_beams', default=4, type=int, help="")    
     parser.add_argument('--learning_rate', default=1e-5, type=int, help="")    
     # Other setting
     parser.add_argument("--saveData", action='store_true', help="Save data used in training and evaluating")
@@ -47,19 +47,22 @@ def main():
         prototype = '_prototype'
     else:
         prototype = ''
-
+        
+    temp_section = args.section
+    # == Load & Prepare data ==
     print("Loading Train data")
     if args.inputType == 'kg':
-        train_df = dt_imp.prepro_KGData(args, "train", section=args.section)
-        val_df = dt_imp.prepro_KGData(args, "val", section=args.section)
+        train_df = data_importer.prepro_KGData(args, "train", section=args.section)
+        val_df = data_importer.prepro_KGData(args, "val", section=args.section)
     else:
-        train_df = dt_imp.prepro_textData(args, "train", section=args.section)
-        val_df = dt_imp.prepro_textData(args, "val", section=args.section)
+        args.section = args.section.split("+")
+        train_df = data_importer.prepro_textData(args, "train", section=args.section, skip_null=True)
+        val_df = data_importer.prepro_textData(args, "val", section=args.section, skip_null=False)
+        args.section = temp_section
     if args.saveData: 
         train_df.to_csv(f"model/trainDataset_{args.section}_{args.inputType}{prototype}.csv")
         val_df.to_csv(f"model/valDataset_{args.section}_{args.inputType}{prototype}.csv")
-    
-    
+        
     seed_everything(42, workers=True)
     exp_name = f'{args.model}_{args.section}-{args.inputType}{prototype}'
     
@@ -67,8 +70,21 @@ def main():
         project='MuP-project',
         name=exp_name,
     )
-    wandb_logger.experiment.config["batch_size"] = args.train_batch_size
-    wandb_logger.experiment.config["input"] = f'{args.section}-{args.inputType}'
+    
+    wandb_logger.experiment.config.update({
+        "model": args.model, 
+        "input_section": args.section, 
+        "input_type": args.inputType, 
+        "batch_size": args.batch_size, 
+        "max_input_length": args.max_input_length, 
+        "max_output_length": args.max_output_length, 
+        "num_beams": args.num_beams, 
+        "learning_rate": args.learning_rate, 
+    })
+
+    # wandb_logger.experiment.config["input_section"] = args.section
+    # wandb_logger.experiment.config["input_type"] = args.inputType
+    # wandb_logger.experiment.config["batch_size"] = args.train_batch_size
 
 
     data_module = DataModule(train_df, val_df, args)
@@ -77,7 +93,8 @@ def main():
     
     checkpoint_callback = ModelCheckpoint(
         dirpath="checkpoints",
-        filename="best-checkpoint",
+        # filename="best-checkpoint",
+        filename=exp_name,
         # save_last=True,
         verbose=True,
         # every_n_epochs=1,

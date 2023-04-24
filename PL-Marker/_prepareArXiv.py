@@ -91,17 +91,21 @@ def export_data(data, output_dir, filename, file_size_limit=float('inf')):
             if file_size > file_size_limit:
                 f.close()
                 if file_number==1:
-                    os.rename(f"{output_dir}{filename}.jsonl", f"{output_dir}{filename}_{file_number}.jsonl")    
+                    os.rename(f"{output_dir}{filename}.jsonl", f"{output_dir}{filename}_01.jsonl")    
                 print(f'\tWrote {idx-recored} records (({file_size/pow(1024,2):.3f}MB)) to {output_dir}{filename}_{file_number}.')
                 recored = idx
                 file_number += 1
                 file_size = 0
-                f = open(f"{output_dir}{filename}_{file_number}.jsonl", "w")
+                if file_number<9:
+                    write_file = f"{output_dir}{filename}_0{file_number}.jsonl"
+                else:
+                    write_file = f"{output_dir}{filename}_{file_number}.jsonl"
+                f = open(write_file, "w")
             f.write(json_str + '\n')
     if file_number==1:
         print(f'Successfully wrote {len(data)} records ({file_size/pow(1024,2):.3f}MB) to {output_dir}{filename}')
     else:
-        print(f'\tWrote {idx-recored} records (({file_size/pow(1024,2):.3f}MB)) to {output_dir}{filename}_{file_number}.')
+        print(f'\tWrote {idx-recored} records (({file_size/pow(1024,2):.3f}MB)) to {write_file}.')
         print(f'Successfully wrote {len(data)} records to {file_number} output files')
     
 
@@ -116,7 +120,7 @@ def main():
     parser.add_argument("--val", action='store_true', help="operate on validate data")
     parser.add_argument("--test", action='store_true', help="operate on test data")
 
-    parser.add_argument("--max_filesize", default=50, type=int, help="Maximum output file size (MB)")
+    parser.add_argument("--max_filesize", default=20, type=int, help="Maximum output file size (MB)")
 
     args = parser.parse_args()
     

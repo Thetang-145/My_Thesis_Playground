@@ -13,8 +13,20 @@ def getRE(dataset, section, filename, gpu):
     --use_ner_results \
     --output_dir _scire_models/{dataset}/{section}  --output_file {filename}_re.json")
         
-def getNER(dataset, section, filename, gpu):
+def getNER(dataset, section, filename, gpu, bs=16):
     os.system(f"CUDA_VISIBLE_DEVICES={gpu} python3  _getNER.py  --model_type bertspanmarker  \
+    --model_name_or_path  pretrained_model/sciner-scibert  --do_lower_case  \
+    --data_dir _prepared_data/{dataset}/{section}  \
+    --learning_rate 2e-5  --num_train_epochs 50  --per_gpu_train_batch_size  8  --per_gpu_eval_batch_size {bs}  --gradient_accumulation_steps 1  \
+    --max_seq_length 512  --save_steps 2000  --max_pair_length 256  --max_mention_ori_length 8    \
+    --do_eval  --evaluate_during_training   --eval_all_checkpoints  \
+    --fp16  --seed 42  --onedropout  --lminit  \
+    --test_file {filename}.jsonl  \
+    --output_dir _sciner_models/{dataset}/{section}  --output_file {filename}_ner.json \
+    --overwrite_output_dir  --output_results")
+    
+def check_inputID(dataset, section, filename, gpu):
+    os.system(f"CUDA_VISIBLE_DEVICES={gpu} python3  check_inputID.py  --model_type bertspanmarker  \
     --model_name_or_path  pretrained_model/sciner-scibert  --do_lower_case  \
     --data_dir _prepared_data/{dataset}/{section}  \
     --learning_rate 2e-5  --num_train_epochs 50  --per_gpu_train_batch_size  8  --per_gpu_eval_batch_size 16  --gradient_accumulation_steps 1  \
@@ -22,7 +34,7 @@ def getNER(dataset, section, filename, gpu):
     --do_eval  --evaluate_during_training   --eval_all_checkpoints  \
     --fp16  --seed 42  --onedropout  --lminit  \
     --test_file {filename}.jsonl  \
-    --output_dir _sciner_models/{dataset}/{section}  --output_file {filename}_ner.json \
+    --output_dir _sciner_models/{dataset}/{section}  --output_file {filename}_checkID.json \
     --overwrite_output_dir  --output_results")
 
 def main():
@@ -40,9 +52,12 @@ def main():
     parser.add_argument("--val", action='store_true', help="operate on validate data")
     parser.add_argument("--test", action='store_true', help="operate on test data")
     
+    parser.add_argument("--check", action='store_true', help="operate on test data")
+    
     parser.add_argument("--gpu", default=0, type=int, 
                         help="CUDA_VISIBLE_DEVICES")
     args = parser.parse_args()
+
     
     if not (args.train or args.val or args.test):
         args.train = args.val = args.test = True
@@ -56,6 +71,20 @@ def main():
     if args.train: train = "--train "
     if args.val:   val   = "--val "
     if args.test:  test  = "--test "
+    
+        
+    if args.check:
+        prepared_dir = f"_prepared_data/{args.dataset}/{args.section}"
+        files = sorted(os.listdir(prepared_dir))
+        for k, v in data_split.items():
+            if v:
+                for file in files:
+                    if file[:len(k)]==k:
+                        while (open("issue_arXiv.txt", 'r').read()).split(", ")[-1] != 'FINISH':
+                            check_inputID(args.dataset, args.section, file[:-6], args.gpu)
+                        print('finish')
+                        break
+        return
                 
     if not args.nopre:
         if args.dataset=="MuP":
@@ -70,8 +99,14 @@ def main():
         for k, v in data_split.items():
             if v:
                 for file in files:
-                    if file[:len(k)]==k: 
-                        getNER(args.dataset, args.section, file[:-6], args.gpu)  
+                    if args.dataset=='arXiv' and k=='train':
+                        if file[:14]=="train_revised_":
+                            print(f"Get dataset from {file[:-6]}")
+                            getNER(args.dataset, args.section, file[:-6], args.gpu)
+                            break
+                    elif file[:len(k)]==k: 
+                        getNER(args.dataset, args.section, file[:-6], args.gpu)
+                        break
 
                         
     if not args.norel:
@@ -82,6 +117,7 @@ def main():
                 for file in files:
                     if file[:len(k)]==k: 
                         getRE(args.dataset, args.section, file[:-9], args.gpu)
+                        break
                         
     exit()
                 

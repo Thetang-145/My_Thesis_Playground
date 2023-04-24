@@ -19,6 +19,12 @@ RAWDATAFILES = {
     "val": "validation_complete.jsonl",
     "test": "testing_with_paper_release.jsonl"
 }
+PAPER_SECTIONS = ["abstract", "introduction", 'conclusion']
+
+# Setting
+FREE_ENT             = True
+REVERSE_SYM_RELATION = False
+
 
 def print_log(msg):
     print(msg)
@@ -47,7 +53,23 @@ def addTripEnt(allEnt, tripEnt, ent):
         tripEnt[ent] = None
     return tripEnt
 
-def getTripSeq(data, sym=False):
+def getFreeEntSeq(freeEnt):
+    freeEntList = {}
+    for k, v in freeEnt.items():
+        if v not in list(freeEntList.keys()): 
+            freeEntList[v] = [k]
+        else:
+            freeEntList[v].append(k)
+    freeEntSeq = ""
+    for entType, ents in freeEntList.items():
+        if len(ents)==1:
+            freeEntSeq += f"{entType} is {ents[0]}. "
+        else:
+            freeEntSeq += f"{entType} are {', '.join(ents[:-1])}"
+            freeEntSeq += f", and {ents[-1]}. "
+    return freeEntSeq
+
+def getTripSeq(data, sym=REVERSE_SYM_RELATION):
     all_sentences = [j for i in data["sentences"] for j in i]
     flatten_ner = [j for i in data["predicted_ner"] for j in i]
     flatten_re  = [j for i in data["predicted_re"] for j in i[1]]
@@ -69,37 +91,25 @@ def getTripSeq(data, sym=False):
         tripEnt = addTripEnt(allEnt, tripEnt, s)
         tripEnt = addTripEnt(allEnt, tripEnt, o)
         
-    freeEnt = allEnt.copy()
-    for key, val in tripEnt.items(): freeEnt.pop(key)
+    
+    if FREE_ENT:
+        freeEnt = allEnt.copy()
+        for key, val in tripEnt.items(): freeEnt.pop(key)
+        freeEntSeq = getFreeEntSeq(freeEnt)
+        tripSeq += freeEntSeq
+        
 
-    return tripEnt, freeEnt, tripSeq
+    return tripSeq
 
-def getFreeEntSeq(freeEnt):
-    freeEntList = {}
-    for k, v in freeEnt.items():
-        if v not in list(freeEntList.keys()): 
-            freeEntList[v] = [k]
-        else:
-            freeEntList[v].append(k)
-    freeEntSeq = ""
-    for entType, ents in freeEntList.items():
-        if len(ents)==1:
-            freeEntSeq += f"{entType} is {ents[0]}. "
-        else:
-            freeEntSeq += f"{entType} are {', '.join(ents[:-1])}"
-            freeEntSeq += f", and {ents[-1]}. "
-    return freeEntSeq
 
 def getInputDF(args, data_split, section):
     input_dataset = getInputDataset(args, data_split, section)
     input_dataset_list = []
     for i, data in enumerate(input_dataset):
-        tripEnt, freeEnt, tripSeq = getTripSeq(data)
-        # for entType in ENT_TYPES:
-        freeEntSeq = getFreeEntSeq(freeEnt)
+        tripSeq = getTripSeq(data)
         row = {
             "paper_id": data['doc_key'], 
-            "input_seq": tripSeq+freeEntSeq
+            "input_seq": tripSeq
         }
         input_dataset_list.append(row)
         if isinstance(args.prototype, int):
@@ -145,37 +155,58 @@ def prepro_KGData(args, data_split, section):
     logging.info(f"Merge input and target to {len(merged_df)} samples")
     return removeIssue(merged_df.reset_index())
 
-def getDataset(args, data_split, section):
-    main_path = str((Path().absolute()).parents[0])    
+def getText_abstract(args, data_split):
+    main_path = str((Path().absolute()).parents[0])
     filepath = f"{main_path}/dataset_MuP/{RAWDATAFILES[data_split]}"
     with open(filepath, 'r') as json_file:
         json_list = list(json_file)
     dataset_list = []
+    
+    data_len=args.prototype if isinstance(args.prototype, int) else len(json_list)
+    for i, json_str in enumerate(json_list):
+        data = json.loads(json_str)
+        dataset_list.append({
+            "paper_id": data["paper_id"], 
+            "input_seq": data["paper"]["abstractText"], 
+            "target_seq": data["summary"]
+        })
+        print_progress(i, data_len, desc=f'Loading abstract input ({data_split})')
+        if isinstance(args.prototype, int) and i>=args.prototype-1: break
+    return pd.DataFrame(dataset_list)
+
+def getText_section(args, data_split, section, skip_null):
+    main_path = str((Path().absolute()).parents[0])
+    filepath = f"{main_path}/dataset_MuP/{data_split}_iden.jsonl"
+    with open(filepath, 'r') as json_file:
+        json_list = list(json_file)
+    dataset_list = []
+    
     if isinstance(args.prototype, int): data_len = args.prototype 
     else: data_len = len(json_list)
     for i, json_str in enumerate(json_list):
         data = json.loads(json_str)
-        if section=='abstract':
-            dataset_list.append({
-                "paper_id": data["paper_id"], 
-                "input_seq": data["paper"]["abstractText"], 
-                "target_seq": data["summary"]
-            })
-        elif isinstance(section, int):
-            try:
-                dataset_list.append({
-                    "paper_id": data["paper_id"], 
-                    "input_seq": data["paper"]["section"][section-1], 
-                    "target_seq": data["summary"]
-                })
-            except:
-                pass
-        print_progress(i, data_len, desc=f'Loading summary ({data_split})')
-        if isinstance(args.prototype, int):
-            if i>=args.prototype-1: break
+        input_seq = ""
+        for sec in section:
+            if isinstance(data[sec], str): 
+                input_seq += data[sec]
+            elif skip_null:
+                continue
+        dataset_list.append({
+            "paper_id": data["paper_id"], 
+            "input_seq": input_seq
+        })
+        print_progress(i, data_len, desc=f'Loading section input ({data_split})')
+        
+        
+        if isinstance(args.prototype, int) and i>=args.prototype-1: break
     return pd.DataFrame(dataset_list)
 
-def prepro_textData(args, data_split, section):
-    dataset_df = getDataset(args, data_split, section)
+def prepro_textData(args, data_split, section, skip_null):
+    if section==['abstract']:
+        dataset_df = getText_abstract(args, data_split)
+    else:
+        input_df = getText_section(args, data_split, section, skip_null)
+        target_df = getTargetDF(args, data_split)
+        dataset_df = input_df.merge(target_df, how='inner', on='paper_id')
     logging.info(f"Loaded and Finished preprocessing {len(dataset_df)} text data")
     return removeIssue(dataset_df)

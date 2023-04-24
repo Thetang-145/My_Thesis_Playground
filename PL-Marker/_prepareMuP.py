@@ -142,14 +142,12 @@ def main():
     args = parser.parse_args()
 
     if not (args.train or args.val or args.test):
-        args.train = args.val = args.test = True
-    if args.section == 'summary': args.test = True
-    
+        args.train = args.val = args.test = True    
+    if args.section == 'summary': args.test = False
     
     main_path = str((Path().absolute()).parents[0])
     dataset_path = main_path+"/dataset_MuP/"
     
-    if args.section == 'summary': args.test = False
     
     for key, val in DATAFILES.items():
         if key=="test" and not(args.test): continue

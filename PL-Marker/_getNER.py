@@ -495,58 +495,45 @@ def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True, sa
     start_time = timeit.default_timer() 
     
     logging.info(f"Start extracting NER from {args.test_file}")
-    run_record = []
+
     # for batch in tqdm(eval_dataloader, desc=f"Extracting NER from {args.test_file}"):
     total = len(eval_dataloader)
     for idx, batch in tqdm(enumerate(eval_dataloader), total=total, desc=f"Extracting NER from {args.test_file}"):
-        run_record.append({
-            "batch": idx,
-        })
-        try:
-            indexs = batch[-2]
-            batch_m2s = batch[-1]
+        
 
-            batch = tuple(t.to(args.device) for t in batch[:-2])
+        indexs = batch[-2]
+        batch_m2s = batch[-1]
 
-            with torch.no_grad():
-                inputs = {'input_ids':      batch[0],
-                          'attention_mask': batch[1],
-                          'position_ids':   batch[2],
-                        #   'labels':         batch[3]
-                          }
+        batch = tuple(t.to(args.device) for t in batch[:-2])
 
-                if args.model_type.find('span')!=-1:
-                    inputs['mention_pos'] = batch[4]
-                if args.use_full_layer!=-1:
-                    inputs['full_attention_mask']= batch[5]
-                    
-                for k, v in inputs.items():
-                    run_record[-1][k] = v.cpu().tolist()
+        with torch.no_grad():
 
-                outputs = model(**inputs)
+            inputs = {'input_ids':      batch[0],
+                      'attention_mask': batch[1],
+                      'position_ids':   batch[2],
+                    #   'labels':         batch[3]
+                      }
 
-                ner_logits = outputs[0]
-                ner_logits = torch.nn.functional.softmax(ner_logits, dim=-1)
-                ner_values, ner_preds = torch.max(ner_logits, dim=-1)
-                
-                run_record[-1]['ner_preds'] = ner_preds.cpu().tolist()
+            if args.model_type.find('span')!=-1:
+                inputs['mention_pos'] = batch[4]
+            if args.use_full_layer!=-1:
+                inputs['full_attention_mask']= batch[5]
 
-                for i in range(len(indexs)):
-                    index = indexs[i]
-                    m2s = batch_m2s[i]
-                    for j in range(len(m2s)):
-                        obj = m2s[j]
-                        ner_label = eval_dataset.ner_label_list[ner_preds[i,j]]
-                        if ner_label!='NIL':
-                            scores[(index[0], index[1])][(obj[0], obj[1])] = (float(ner_values[i,j]), ner_label)
-            run_record[-1]['status'] = "normal"
-        except Exception as e:      
-            run_record[-1]['status'] = "error"
-            print(f"Error msg: {str(e)}")
-            logging.error(f"Error msg: {str(e)}")
-            torch.cuda.empty_cache()
-            break
-    
+            outputs = model(**inputs)
+
+            ner_logits = outputs[0]
+            ner_logits = torch.nn.functional.softmax(ner_logits, dim=-1)
+            ner_values, ner_preds = torch.max(ner_logits, dim=-1)
+
+            for i in range(len(indexs)):
+                index = indexs[i]
+                m2s = batch_m2s[i]
+                for j in range(len(m2s)):
+                    obj = m2s[j]
+                    ner_label = eval_dataset.ner_label_list[ner_preds[i,j]]
+                    if ner_label!='NIL':
+                        scores[(index[0], index[1])][(obj[0], obj[1])] = (float(ner_values[i,j]), ner_label)
+
     if save_running:
         now = datetime.now()
         dt_string = now.strftime(f"%y%m%d_%H%M%S")
