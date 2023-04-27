@@ -489,7 +489,8 @@ def evaluate(args, model, tokenizer, prefix="", do_test=False, do_score=True, sa
 
     scores = defaultdict(dict)
     predict_ners = defaultdict(list)
-
+    
+    model.resize_token_embeddings(len(eval_dataset.tokenizer))
     model.eval()
 
     start_time = timeit.default_timer() 

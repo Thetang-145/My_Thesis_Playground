@@ -1,0 +1,125 @@
+==================================================SP:d53ee573b8083ecf891d4d560eb8a54c30c5cb3a==================================================
+We proposed Once - for - All ( OFA ) , a new methodology that decouples model training from architecture search for efficient deep learning deployment under a large number of hardware platforms .
+Unlike 
+ 10 
+ Published as a conference paper at ICLR 2020 
+ FPGA Arithmetic Intensity ( op / B ) MobileNetV2
+MnasNet OFA 0.35 27 27.6 39.4 0.5 35.3 37.1 49.4 0.75 51.6 51.9 54.4 1.0 61 61.2 63.9 Ar ith m
+et
+ic
+In te ns ity ( O PS /B yt e ) 0
+18 35 53 70 
+ 1.0x FPGA UltraZed - EG GOPS / s MobileNetV2 MnasNet OFA 0.35 36 31.8 61.2 0.5 48.1 44.0 75.5 0.75 67.8 81.3 1.0 79 83.7 ZU 3E G F PG A ( G O PS /s ) 0
+23 45 68 90 FPGA ZCU102 GOPS / s-1 MobileNetV2 MnasNet OFA 0.35 77 67.6 126.8 0.5 102.6 94.4 155.3 0.75 150.6 135.4 164.6 1.0 185 167.3 186.3 ZU 9E G F PG A ( G O PS /s ) 0
+50 100 150 200 MobileNet - v2 MnasNet OFA ( Ours ) ( under different latency constraints ) 
+ 0.75x0.5x0.35x1.0x0.75x0.5x0.35x1.0x0.75x0.5x0.35x ( under different latency constraints)(under different latency constraints ) 
+ M B 
+ 1 3x 
+ 3 
+ C on 
+ v 3x 
+ 3 
+ P oo 
+ lin g 
+ FC 
+ 164x164 
+ M B 
+ 4 3x 
+ 3 
+ M B 
+ 5 3x 
+ 3 
+ M B 
+ 6 3x 
+ 3 
+ M B 
+ 5 3x 
+ 3 
+ M B 
+ 6 3x 
+ 3 
+ ZU3EG 4.1ms ( R = 164 ) ( 3x3_MBConv1_RELU6 ( 3x3_MBConv4_RELU6 ( 3x3_MBConv4_RELU6 ( 3x3_MBConv4_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv4_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv6_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv6_RELU6 
+ M B 4 3x 3 M B 4 3x 3 M B 5 3x 3 M B 5 3x 3 M B 5 3x 3 M B 5 3x 3 M B 4 3x 3 
+ CPU 10.9ms ( R = 144 ) 3x3_Conv_O40 ( 3x3_MBConv1_RELU6_O24 ( 5x5_MBConv4_RELU6_O32 ( 5x5_MBConv3_RELU6_O32 ( 3x3_MBConv3_RELU6_O56 ( 7x7_MBConv3_RELU6_O56 ( 5x5_MBConv4_RELU6_O104 ( 3x3_MBConv4_RELU6_O104 ( 7x7_MBConv3_RELU6_O104 ( 5x5_MBConv4_RELU6_O128 ( 7x7_MBConv4_RELU6_O128 ( 3x3_MBConv6_RELU6_O248 ( 3x3_MBConv4_RELU6_O248 ( 5x5_MBConv4_RELU6_O416 1x1_Conv_O1664 1664x1000_Linear M B 1 3x 3 C on v 3x 3 144x144 M B 4 5x 5 M B 3 5x 5 M B 3 3x 3 M B 3 7x 7 M B 4 5x 5 M B 4 3x 3 M B 3 7x 7 M B 4 5x 5 M B 4 7x 7 M B 6 3x 3 M B 4 3x 3 M B 4 5x 5 P oo lin g FC M B 1 3x 3 C on v 3x 3 144x144 M B 4 3x 3 M B 4 3x 3 M B 6 3x 3 M B 6 3x 3 M B 4 3x 3 M B 3 3x 3 M B 3 5x 5 M B 3 3x 3 M B 4 5x 5 M B 3 3x 3 M B 6 3x 3 M B 6 3x 3 M B 6 7x 7 M B 4 7x 7 M B 6 3x 3 M B 3 5x 5 P oo lin g FC 
+ 1 
+ ( a ) 4.1ms latency on Xilinx ZU3EG ( batch size = 1 ) . 
+
+M B 
+ 1 3x 
+ 3 
+ C on 
+ v 3x 
+ 3 
+ P oo 
+ lin g 
+ FC 
+ 164x164 
+ M B 
+ 4 3x 
+ 3 
+ M B 
+ 5 3x 
+ 3 
+ M B 
+ 6 3x 
+ 3 
+ M B 
+ 5 3x 
+ 3 
+ M B 
+ 6 3x 
+ 3 
+ ZU3EG 4.1ms ( R = 164 ) ( 3x3_MBConv1_RELU6 ( 3x3_MBConv4_RELU6 ( 3x3_MBConv4_RELU6 ( 3x3_MBConv4_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv4_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv6_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv6_RELU6 
+ M B 4 3x 3 M B 4 3x 3 M B 5 3x 3 M B 5 3x 3 M B 5 3x 3 M B 5 3x 3 M B 4 3x 3 
+ CPU 10.9ms ( R = 144 ) 3x3_Conv_O40 ( 3x3_MBConv1_RELU6_O24 ( 5x5_MBConv4_RELU6_O32 ( 5x5_MBConv3_RELU6_O32 ( 3x3_MBConv3_RELU6_O56 ( 7x7_MBConv3_RELU6_O56 ( 5x5_MBConv4_RELU6_O104 ( 3x3_MBConv4_RELU6_O104 ( 7x7_MBConv3_RELU6_O104 ( 5x5_MBConv4_RELU6_O128 ( 7x7_MBConv4_RELU6_O128 ( 3x3_MBConv6_RELU6_O248 ( 3x3_MBConv4_RELU6_O248 ( 5x5_MBConv4_RELU6_O416 1x1_Conv_O1664 1664x1000_Linear M B 1 3x 3 C on v 3x 3 144x144 M B 4 5x 5 M B 3 5x 5 M B 3 3x 3 M B 3 7x 7 M B 4 5x 5 M B 4 3x 3 M B 3 7x 7 M B 4 5x 5 M B 4 7x 7 M B 6 3x 3 M B 4 3x 3 M B 4 5x 5 P oo lin g FC M B 1 3x 3 C on v 3x 3 144x144 M B 4 3x 3 M B 4 3x 3 M B 6 3x 3 M B 6 3x 3 M B 4 3x 3 M B 3 3x 3 M B 3 5x 5 M B 3 3x 3 M B 4 5x 5 M B 3 3x 3 M B 6 3x 3 M B 6 3x 3 M B 6 7x 7 M B 4 7x 7 M B 6 3x 3 M B 3 5x 5 P oo lin g FC ( b ) 10.9ms latency on Intel Xeon CPU ( batch size = 1 ) . 
+
+M B 
+ 1 3x 
+ 3 
+ C on 
+ v 3x 
+ 3 
+ P oo 
+ lin g 
+ FC 
+ 164x164 
+ M B 
+ 4 3x 
+ 3 
+ M B 
+ 5 3x 
+ 3 
+ M B 
+ 6 3x 
+ 3 
+ M B 
+ 5 3x 
+ 3 
+ M B 
+ 6 3x 
+ 3 
+ ZU3EG 4.1ms ( R = 164 ) ( 3x3_MBConv1_RELU6 ( 3x3_MBConv4_RELU6 ( 3x3_MBConv4_RELU6 ( 3x3_MBConv4_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv4_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv6_RELU6 ( 3x3_MBConv5_RELU6 ( 3x3_MBConv6_RELU6 
+ M B 4 3x 3 M B 4 3x 3 M B 5 3x 3 M B 5 3x 3 M B 5 3x 3 M B 5 3x 3 M B 4 3x 3 
+ CPU 10.9ms ( R = 144 ) 3x3_Conv_O40 ( 3x3_MBConv1_RELU6_O24 ( 5x5_MBConv4_RELU6_O32 ( 5x5_MBConv3_RELU6_O32 ( 3x3_MBConv3_RELU6_O56 ( 7x7_MBConv3_RELU6_O56 ( 5x5_MBConv4_RELU6_O104 ( 3x3_MBConv4_RELU6_O104 ( 7x7_MBConv3_RELU6_O104 ( 5x5_MBConv4_RELU6_O128 ( 7x7_MBConv4_RELU6_O128 ( 3x3_MBConv _ RELU6_O248 ( 3x3_MBConv4_RELU6_O248 ( 5x5_MBConv4_RELU6_O416 1x1_Conv_O1664 1664x1000_Linear M B 1 3x 3 C on v 3x 3 144x144 M B 4 5x 5 M B 3 5x 5 M B 3 3x 3 M B 3 7x 7 M B 4 5x 5 M B 4 3x 3 M B 3 7x 7 M B 4 5x 5 M B 4 7x 7 M B 6 3x 3 M B 4 3x 3 M B 4 5x 5 P oo lin g FC M B 1 3x 3 C on v 3x 3 144x144 M B 4 3x 3 M B 4 3x 3 M B 6 3x 3 M B 6 3x 3 M B 4 3x 3 M B 3 3x 3 M B 3 5x 5 M B 3 3x 3 M B 4 5x 5 M B 3 3x 3 M B 6 3x 3 M B 6 3x 3 M B 6 7x 7 M B 4 7x 7 M B 6 3x 3 M B 3 5x 5 P oo lin g FC 
+ 1 
+ ( c ) 14.9ms latency on NVIDIA 1080Ti ( batch size = 64 ) . 
+
+Figure 14 : OFA can design specialized models for different hardware and different latency constraint .
+“ MB4 3x3 ” means “ mobile block with expansion ratio 4 , kernel size 3x3 ” .
+FPGA and GPU models are wider than CPU model due to larger parallelism .
+Different hardware has different cost model , leading to different optimal CNN architectures .
+OFA provides a unified and efficient design methodology . 
+
+previous approaches that design and train a neural network for each deployment scenario , we designed a once - for - all network that supports different architectural configurations , including elastic depth , width , kernel size , and resolution .
+It reduces the training cost ( GPU hours , energy consumption , and CO2 emission ) by orders of magnitude compared to conventional methods .
+To prevent sub - networks of different sizes from interference , we proposed a progressive shrinking algorithm that enables a large number of sub - network to achieve the same level of accuracy compared to training them independently .
+Experiments on a diverse range of hardware platforms and efficiency constraints demonstrated the effectiveness of our approach .
+OFA provides an automated ecosystem to efficiently design efficient neural networks with the hardware cost model in the loop .
+==================================================SP:1be944b5f82d33ab1feb5639792a4c06b8f0c85a==================================================
+We show how to use neural module networks to answer compositional questions requiring symbolic reasoning against natural language text .
+We define probabilistic modules that propagate uncertainty about symbolic reasoning operations in a way that is end - to - end differentiable .
+Additionally , we show that injecting inductive bias using unsupervised auxiliary losses significantly helps learning . 
+
+While we have demonstrated marked success in broadening the scope of neural modules and applying them to open - domain text , it remains a significant challenge to extend these models to the full range of reasoning required even just for the DROP dataset .
+NMNs provide interpretability , compositionality , and improved generalizability , but at the cost of restricted expressivity as compared to more black box models .
+Future research is necessary to continue bridging these reasoning gaps .

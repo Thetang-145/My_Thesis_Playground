@@ -1,0 +1,101 @@
+==================================================SP:15c243829ed3b2505ed1e122bd499089f8a862da==================================================
+Unsupervised domain adaptation ( UDA ) deals with the lack of labeled data in a target domain by transferring knowledge from a labeled source domain ( i.e. , a related dataset with different distribution where abundant labeled data already exists ) .
+The paramount importance of this paradigm has led to remarkable advances in the field in terms of both theory and algorithms ( Ben - David et al . , 2007 ; 2010a;b ; Mansour et al . , 2009 ) .
+Several state - of - the - art algorithms tackle UDA by learning domaininvariant representations in an adversarial fashion ( Shu et al . , 2018 ; Long et al . , 2018 ; Saito et al . , 2018 ; Hoffman et al . , 2018 ; Zhang et al . , 2019 ; Acuna et al . , 2021 ) .
+Their goal is to fool an auxiliary classifier that operates in a representation space and aims to classify whether the datapoint belongs to either the source or the target domain .
+This idea , called Domain - Adversarial Learning ( DAL ) , was introduced by Ganin et al . ( 2016 ) and can be more formally understood as minimizing the discrepancy between source and target domain in a representation space ( Acuna et al . , 2021 ) . 
+
+Despite DAL being a dominant approach for UDA , alternative solutions have been sought as DAL is noticeably unstable and difficult to train in practice ( Sener et al . , 2016 ; Sun et al . , 2019 ; Chang et al . , 2019 ) .
+One major cause of instability is the adversarial nature of the learning algorithm which results from the introduction of the Gradient Reversal Layer ( GRL , Ganin et al . , 2016 ) ( Figure 1 ) .
+GRL flips the sign of the gradient during the backward pass , which has profound implications on the training dynamics and asymptotic behavior of the learning algorithm .
+Indeed , GRL transforms gradient descent into a competitive gradient - based algorithm which may converge to periodic orbits and other non - trivial limiting behavior that arise for instance in chaotic systems ( Mazumdar et al . , 2020 ) .
+Surprisingly , little attention has been paid to this fact , and specifically to the adversarial component and interaction among the three different networks in the algorithm .
+In particular , three fundamental questions have not been answered from an algorithmic point of view , 1 ) What is optimality in DAL ?
+2 ) What makes DAL difficult to train and 3 ) How can we mitigate this problem ? 
+
+In this work , we aim to answer these questions by interpreting the DAL framework through the lens of game theory .
+Specifically , we use tools developed by the game theoretical community in Başar & Olsder ( 1998 ) ;
+Letcher et al . ( 2019 ) ; Mazumdar et al . ( 2020 ) and draw inspiration from the existing two - player zero - sum game interpretations of Generative Adversarial Networks ( GANs ) 
+ ( Goodfellow et al . , 2014 ) .
+We emphasize that in DAL , however , we have three rather than two networks interacting with each other , with partial cooperation and competition .
+We propose a natural three - player game interpretation for DAL , which is not necessarily equivalent to two - player zero - sum game interpretations ( see Example 1 ) , which we coin as the Domain - Adversarial Game .
+We also propose to interpret and characterize optimal solutions in DAL as local Nash Equilibria ( see Section 3 ) .
+This characterization introduces a proper mathematical definition of algorithmic optimality for DAL .
+It also provides sufficient conditions for optimality that drives the algorithmic analysis . 
+
+With our proposed game perspective in mind , a simple optimization solution would be to use the Gradient Descent ( GD ) algorithm , which is the de facto solution but known to be unstable .
+Alternatively , we could also use other popular gradient based optimizers proposed in the context of differentiable games ( e.g. Korpelevich , 1976 ; Mescheder et al . , 2017 ) .
+However , we notice that these do not outperform GD in practice ( see § 6 ) .
+To understand why , we analyze the asymptotic behavior of gradient - based algorithms in the proposed domain - adversarial game ( § 4 ) .
+The main result of § 4.2 ( Theorem 2 ) shows that GD with GRL ( i.e. , the existing solution for DAL ) violates the asymptotic convergence guarantees to local NE unless an upper bound is placed on the learning rate , which may explain its training instability and sensitivity to optimizer parameters .
+In § 4.3 , Appendix B.2 and Appendix E , we also provide a similar analysis for the popular game optimization algorithms mentioned above .
+We emphasize however that while some of our results may be of independent interest for learning in general games , our focus is DAL .
+§ 4.3 and § 6 show both theoretically and experimentally that the limitations mentioned above disappear if standard optimizers are replaced with ODE solvers of at least second order .
+These are straightforward to implement as drop - in replacements to existing optimizers .
+They also lead to more stable algorithms , allow for more aggressive learning rates and provide notable performance gains . 
+
+2 PRELIMINARIES < latexit sha1_base64="XcLU0OQlzQn4TD3DERhz5ZsAZ / U=">AAAB8nicbVBNS8NAFHypX7V+VT16WSyCp5KIoseiF48VbC2moWy223bpJht2X4QS+jO8eFDEq7 / Gm//GTZuDtg4sDDPvsfMmTKQw6LrfTmlldW19o7xZ2dre2d2r7h+0jUo14y2mpNKdkBouRcxbKFDyTqI5jULJH8LxTe4 / PHFthIrvcZLwIKLDWAwEo2glvxtRHDEqs8dpr1pz6 + 4MZJl4BalBgWav+tXtK5ZGPEYmqTG+5yYYZFSjYJJPK93U8ISyMR1y39KYRtwE2SzylJxYpU8GStsXI5mpvzcyGhkziUI7mUc0i14u / uf5KQ6ugkzESYo8ZvOPBqkkqEh+P+kLzRnKiSWUaWGzEjaimjK0LVVsCd7iycukfVb3Luru3XmtcV3UUYYjOIZT8OASGnALTWgBAwXP8ApvDjovzrvzMR8tOcXOIfyB8 / kDl52RdA==</latexit > Z 
+ < latexit sha1_base64="3xtdy5laA / WQWHLvq4EtMaredYI=">AAAB7XicbVBNS8NAEJ34WetX1aOXxSJ4Kokoeix68VjBfkAbyma7adZuNmF3IpTQ/+DFgyJe / T / e / Ddu2xy09cHA470ZZuYFqRQGXffbWVldW9 / YLG2Vt3d29 / YrB4ctk2Sa8SZLZKI7ATVcCsWbKFDyTqo5jQPJ28Hoduq3n7g2IlEPOE65H9OhEqFgFK3U6kUUSdSvVN2aOwNZJl5BqlCg0a989QYJy2KukElqTNdzU / RzqlEwySflXmZ4StmIDnnXUkVjbvx8du2EnFplQMJE21JIZurviZzGxozjwHbGFCOz6E3F/7xuhuG1nwuVZsgVmy8KM0kwIdPXyUBozlCOLaFMC3srYRHVlKENqGxD8BZfXiat85p3WXPvL6r1myKOEhzDCZyBB1dQhztoQBMYPMIzvMKbkzgvzrvzMW9dcYqZI / gD5 / MHKgqO2w==</latexit > ĥ 
+ < latexit sha1_base64="4ZzWvs7xxQO9ik+Ene1mXfvAGHA=">AAAB73icbVDLSgNBEOyNrxhfUY9eBoPoKeyKosegF48RzAOSJcxOZrNDZmfXmV4hLPkJLx4U8ervePNvnDwOmljQUFR1090VpFIYdN1vp7Cyura+UdwsbW3v7O6V9w+aJsk04w2WyES3A2q4FIo3UKDk7VRzGgeSt4Lh7cRvPXFtRKIecJRyP6YDJULBKFqp3Y0okoic9soVt+pOQZaJNycVmKPeK391+wnLYq6QSWpMx3NT9HOqUTDJx6VuZnhK2ZAOeMdSRWNu / Hx675icWKVPwkTbUkim6u+JnMbGjOLAdsYUI7PoTcT / vE6G4bWfC5VmyBWbLQozSTAhk+dJX2jOUI4soUwLeythEdWUoY2oZEPwFl9eJs3zqndZde8vKrWbeRxFOIJjOAMPrqAGd1CHBjCQ8Ayv8OY8Oi / Ou / Mxay0485lD+APn8wfj5o82</latexit > ĥ0 
+ < latexit sha1_base64="2G0f8RUU8YWS9zeN9PTsk8ECOOY=">AAAB8HicbVDLSgMxFL1TX7W+qi7dBIvgqsyIosuiG5dV7EPaoWQymTY0yQxJRihDv8KNC0Xc+jnu / BvT6Sy09UDgcM655N4TJJxp47rfTmlldW19o7xZ2dre2d2r7h+0dZwqQlsk5rHqBlhTziRtGWY47SaKYhFw2gnGNzO/80SVZrF8MJOE+gIPJYsYwcZKj / eDPrfhEA+qNbfu5kDLxCtIDQo0B9WvfhiTVFBpCMda9zw3MX6GlWGE02mln2qaYDLGQ9qzVGJBtZ / lC0 / RiVVCFMXKPmlQrv6eyLDQeiICmxTYjPSiNxP/83qpia78jMkkNVSS+UdRypGJ0ex6FDJFieETSzBRzO6KyAgrTIztqGJL8BZPXibts7p3UXfvzmuN66KOMhzBMZyCB5fQgFtoQgsICHiGV3hzlPPivDsf82jJKWYO4Q+czx+ZdZBG</latexit > R ( GRL ) < latexit sha1_base64="1Out49 / IGg3BAWnSOWbUFY4P5mo=">AAAB+HicdVDLSgMxFM3UV62Pjrp0EyyCG8tMHdu6K7pxWcE+oFPKnTRtQzOZIckItfRL3LhQxK2f4s6 / MdNWUNEDgcM553JvThBzprTjfFiZldW19Y3sZm5re2c3b+/tN1WUSEIbJOKRbAegKGeCNjTTnLZjSSEMOG0F46vUb91RqVgkbvUkpt0QhoINGAFtpJ6dP / W5SfcB+wICDj274BQvquWSV8ZO0XEqbslNSaninXnYNUqKAlqi3rPf / X5EkpAKTTgo1XGdWHenIDUjnM5yfqJoDGQMQ9oxVEBIVXc6P3yGj43Sx4NImic0nqvfJ6YQKjUJA5MMQY / Uby8V//I6iR5Uu1Mm4kRTQRaLBgnHOsJpC7jPJCWaTwwBIpm5FZMRSCDadJUzJXz9FP9PmqWie150brxC7XJZRxYdoiN0glxUQTV0jeqogQhK0AN6Qs / WvfVovVivi2jGWs4coB+w3j4BX0GS6w==</latexit > r 
+ < latexit sha1_base64="4e7VN7IWD / ZM+123qYV7uoLuXJs=">AAAB7XicbVDLSgNBEOz1GeMr6tHLYBA8hV1R9Bj04jGCeUCyhN7JbDJmdmaZmRVCyD948aCIV//Hm3 / jJNmDJhY0FFXddHdFqeDG+v63t7K6tr6xWdgqbu / s7u2XDg4bRmWasjpVQulWhIYJLlndcitYK9UMk0iwZjS8nfrNJ6YNV / LBjlIWJtiXPOYUrZMaHYmRwG6p7Ff8GcgyCXJShhy1bumr01M0S5i0VKAx7cBPbThGbTkVbFLsZIalSIfYZ21HJSbMhOPZtRNy6pQeiZV2JS2Zqb8nxpgYM0oi15mgHZhFbyr+57UzG1+HYy7TzDJJ54viTBCryPR10uOaUStGjiDV3N1K6AA1UusCKroQgsWXl0njvBJcVvz7i3L1Jo+jAMdwAmcQwBVU4Q5qUAcKj / AMr / DmKe / Fe / c+5q0rXj5zBH / gff4AgK6PFA==</latexit > r 
+ < latexit sha1_base64="4e7VN7IWD / ZM+123qYV7uoLuXJs=">AAAB7XicbVDLSgNBEOz1GeMr6tHLYBA8hV1R9Bj04jGCeUCyhN7JbDJmdmaZmRVCyD948aCIV//Hm3 / jJNmDJhY0FFXddHdFqeDG+v63t7K6tr6xWdgqbu / s7u2XDg4bRmWasjpVQulWhIYJLlndcitYK9UMk0iwZjS8nfrNJ6YNV / LBjlIWJtiXPOYUrZMaHYmRwG6p7Ff8GcgyCXJShhy1bumr01M0S5i0VKAx7cBPbThGbTkVbFLsZIalSIfYZ21HJSbMhOPZtRNy6pQeiZV2JS2Zqb8nxpgYM0oi15mgHZhFbyr+57UzG1+HYy7TzDJJ54viTBCryPR10uOaUStGjiDV3N1K6AA1UusCKroQgsWXl0njvBJcVvz7i3L1Jo+jAMdwAmcQwBVU4Q5qUAcKj / AMr / DmKe / Fe / c+5q0rXj5zBH / gff4AgK6PFA==</latexit > r 
+ < latexit sha1_base64="qmqxvw54qUUoUaz9MnxwYmJpOwM=">AAAB6HicbVBNS8NAEJ3Ur1q / qh69LBbBU0lE0WPRi8cW7Ae0oWy2k3btZhN2N0IJ / QVePCji1Z / kzX / jts1BWx8MPN6bYWZekAiujet+O4W19Y3NreJ2aWd3b/+gfHjU0nGqGDZZLGLVCahGwSU2DTcCO4lCGgUC28H4bua3n1BpHssHM0nQj+hQ8pAzaqzUGPbLFbfqzkFWiZeTCuSo98tfvUHM0gilYYJq3fXcxPgZVYYzgdNSL9WYUDamQ+xaKmmE2s / mh07JmVUGJIyVLWnIXP09kdFI60kU2M6ImpFe9mbif143NeGNn3GZpAYlWywKU0FMTGZfkwFXyIyYWEKZ4vZWwkZUUWZsNiUbgrf88ippXVS9q6rbuKzUbvM4inACp3AOHlxDDe6hDk1ggPAMr / DmPDovzrvzsWgtOPnMMfyB8 / kDzceM7w==</latexit > g 
+ Figure 1 : We study domainadversarial training from a game perspective .
+In DAL ( Ganin et al . ( 2016 ) ) , three networks interact with each other : the feature extractor ( g ) , the domain classifier ( ĥ′ ) and the classifier ( ĥ ) .
+During backpropagation , the GRL flips the sign of the gradient with respect to g. 
+
+We focus on the UDA scenario and follow the formulation from Acuna et al . ( 2021 ) .
+This makes our analysis general and applicable to most state - of - the - art DAL algorithms ( e.g. , Ganin et al . ( 2016 ) ; Saito et al . ( 2018 ) ; Zhang et al . ( 2019 ) ) .
+We assume that the learner has access to a source dataset ( S ) with labeled examples and a target dataset ( T ) with unlabeled examples , where the source inputs xsi are sampled i.i.d .
+from a ( source ) distribution Ps and the target inputs xti are sampled i.i.d . from a ( target ) distribution Pt , both over X .
+We have Y = { 0 , 1 } for binary classification , and Y = { 1 , ... , k } in the multiclass case .
+The risk of a hypothesis h : X → Y w.r.t .
+the labeling function f , using a loss function ` : Y×Y → R+ under distribution D is defined as : R`D(h , f ) : = ED[`(h(x ) , f(x ) ) ] .
+For simplicity , we define R`S(h ) :
+= R ` Ps ( h , fs ) and R`T ( h ) : = R ` Pt 
+ ( h , ft ) .
+The hypothesis class of h is denoted byH. 
+ UDA aims to minimize the risk in the target domain while only having access to labeled data in the source domain .
+This risk is upper bounded in terms of the risk of the source domain , the discrepancy between the two distributions and the joint hypothesis error λ∗ : Theorem 1 .
+( Acuna et al . ( 2021 ) )
+Let us note ` : Y ×
+Y → [ 0 , 1 ] , λ∗ : = minh∈HR`S(h )
++ R`T ( h ) , and Dφh , H(Ps||Pt ) : = suph′∈H |Ex∼Ps
+[ ` ( h(x ) , h′(x))]− Ex∼Pt
+[ φ∗(`(h(x ) , h′(x)))| .
+We have : 
+ R`T ( h ) ≤ R`S(h )
++
+Dφh , H(Ps||Pt ) + λ∗. ( 1 ) 
+
+The function φ : R+ → R defines a particular f -divergence and φ∗ is its ( Fenchel ) conjugate .
+As is typical in UDA , we assume that the hypothesis class is complex enough and both fs and ft are similar in such a way that the non - estimable term ( λ∗ ) is negligible and can be ignored . 
+
+Domain - Adversarial Training ( see Figure 1 ) aims to find a hypothesis h ∈ H that jointly minimizes the first two terms of Theorem 1 .
+To this end , the hypothesis h is interpreted as the composition of h = ĥ ◦ g with g : X → Z , and ĥ : Z → Y .
+Another function class Ĥ is then defined to formulate H : = { ĥ ◦ g : ĥ ∈ Ĥ , g ∈ G } .
+The algorithm tries to find the function
+g ∈ G such that ĥ ◦ g minimizes the risk of the source domain ( i.e. the first term in Theorem 1 ) , and its composition with ĥ and ĥ′ minimizes the divergence of the two distributions ( i.e. the second term in Theorem 1 ) . 
+
+Algorithmically , the computation of the divergence function in Theorem 1 is estimated by a so - called domain classifier ĥ′ ∈ Ĥ whose role is to detect whether the datapoint g(xi ) ∈ Z belongs to the source or to the target domain .
+When there does not exist a function ĥ′ ∈ Ĥ that can properly distinguish between g(xsi ) and g(x t i ) , g is said to be invariant to the domains . 
+
+Learning is performed using GD and the GRL ( denoted by Rλ ) on the following objective : 
+ min ĥ∈Ĥ,g∈G , ĥ′∈Ĥ 
+ Ex∼ps
+[ ` ( ĥ ◦ g , y)]− αds , t(ĥ , ĥ′ , Rλ(g ) ) , ( 2 ) 
+ where ds , t(ĥ , ĥ′ , g ) : = Ex∼ps
+[ ˆ̀(ĥ′ ◦ g , ĥ ◦ g)]− Ex∼pt
+[ ( φ∗ ◦ ˆ̀)(ĥ′ ◦ g , ĥ ◦ g ) ] .
+Mathematically , the GRL Rλ is treated as a “ pseudo - function ” defined by two ( incompatible ) equations describing its forward and back - propagation behavior ( Ganin & Lempitsky , 2015 ; Ganin et al . , 2016 ) .
+Specifically , 
+ Rλ(x ) :
+= x and dRλ(x)/dx : = −λ , ( 3 )
+where λ and α are hyper - parameters that control the tradeoff between achieving small source error and learning an invariant representation .
+The surrogate loss ` : Y ×
+Y → R ( e.g. , cross - entropy ) is used to minimize the empirical risk in the source domain .
+The choice of function ˆ̀ : Y ×
+Y → R and of conjugate φ∗ of the f -divergence defines the particular algorithm ( Ganin et al . , 2016 ; Saito et al . , 2018 ; Zhang et al . , 2019 ; Acuna et al . , 2021 ) .
+From eq . 2 , we can notice that GRL introduces an adversarial scheme .
+We next interpret eq . 2 as a three - player game where the players are ĥ , ĥ′ and g , and study its continuous gradient dynamics .

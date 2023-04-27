@@ -97,6 +97,24 @@ def load_data(filepath, section):
     print(f"\nSuccessfully import {data_len-cannot_import}/{data_len} samples")
     return dataset
 
+def load_special_section(filepath, section):
+    with open(filepath, 'r') as json_file:
+        json_list = list(json_file)
+    dataset = []
+    data_len = len(json_list)
+    cannot_import = 0
+    for i, json_str in enumerate(json_list):
+        result = json.loads(json_str)
+        sent = result[section]
+        if isinstance(sent, str):
+            dataset.append({
+                "doc_key": result["paper_id"], 
+                "sentences": sent,
+            })
+        print_progress(i, data_len, desc=f'Loading {section} ')
+    print(f"\nSuccessfully import {len(dataset)}/{data_len} samples")
+    return dataset
+
 def convert_data(data):
     num_docs = len(data)
     nlp = spacy.load("en_core_web_sm")
@@ -119,18 +137,19 @@ def export_data(data, output_dir, filename, append=False):
     print("Writing prepared data to jsonl file")
     mode = 'a+' if append else 'w'
     if not(Path(output_dir).exists()): os.mkdir(output_dir)
-    with open(output_dir+filename, mode, encoding='utf-8') as f:
+    output_path = f'{output_dir}/{filename}'
+    with open(output_path, mode, encoding='utf-8') as f:
         for line in data:
             json_record = json.dumps(line, ensure_ascii=False)
             f.write(json_record + '\n')
-    print('Wrote {} records to {}'.format(len(data), output_dir+filename))
+    print(f'Wrote {len(data)} records to {output_path}')
     
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--section", default='summary', type=str,
-                        help="which data to be prepated: summary, abstract, 1st_sec")
-    parser.add_argument("--output_dir", default='_prepared_data/', type=str,
+                        help="which data to be prepated: summary, abstract, section_1, introduction")
+    parser.add_argument("--output_dir", default='_prepared_data', type=str,
                         help="Directory of prepared data")
     
     parser.add_argument("--train", action='store_true', help="operate on train data")
@@ -146,21 +165,24 @@ def main():
     if args.section == 'summary': args.test = False
     
     main_path = str((Path().absolute()).parents[0])
-    dataset_path = main_path+"/dataset_MuP/"
+    dataset_path = main_path+"/dataset_MuP"
     
     
-    for key, val in DATAFILES.items():
-        if key=="test" and not(args.test): continue
-        if key=="train" and not(args.train): continue
-        if key=="val" and not(args.val): continue
+    for k, v in DATAFILES.items():
+        if k=="test" and not(args.test): continue
+        if k=="train" and not(args.train): continue
+        if k=="val" and not(args.val): continue
         
-        print(f"{'*'*25} Processing {key} data {'*'*25}")
-        data = load_data(dataset_path+val, args.section)
+        print(f"{'*'*25} Processing {k} data {'*'*25}")
+        if args.section in ['introduction', 'conclusion']:
+            data = load_special_section(f'{dataset_path}/{k}_iden.jsonl', args.section)
+        else:
+            data = load_data(f'{dataset_path}/{v}', args.section)
         data = convert_data(data)
         export_data(
             data, 
-            output_dir = f"{args.output_dir}/{args.section}/", 
-            filename   = f"{key}.jsonl"
+            output_dir = f"{args.output_dir}/MuP/{args.section}", 
+            filename   = f"{k}.jsonl"
         )
         
 if __name__ == "__main__":

@@ -1,0 +1,822 @@
+# coding=utf-8
+# Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
+# Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+""" Finetuning the library models for sequence classification on GLUE (Bert, XLM, XLNet, RoBERTa)."""
+
+from __future__ import absolute_import, division, print_function
+
+import argparse
+import glob
+import os
+import sys
+import random
+from collections import defaultdict
+import re
+import shutil
+import time
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import torch
+from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
+                              TensorDataset)
+from torch.utils.data.distributed import DistributedSampler
+from tensorboardX import SummaryWriter
+from tqdm import tqdm, trange
+
+from transformers import (WEIGHTS_NAME, BertConfig,
+                                  BertTokenizer,
+                                  RobertaConfig,
+                                  RobertaTokenizer,
+                                  get_linear_schedule_with_warmup,
+                                  AdamW,
+                                  BertForNER,
+                                  BertForSpanNER,
+                                  BertForSpanMarkerNER,
+                                  BertForSpanMarkerBiNER,
+                                  AlbertForNER,
+                                  AlbertConfig,
+                                  AlbertTokenizer,
+                                  BertForLeftLMNER,
+                                  RobertaForNER,
+                                  RobertaForSpanNER,
+                                  RobertaForSpanMarkerNER,
+                                  AlbertForSpanNER,
+                                  AlbertForSpanMarkerNER,
+                                  )
+
+from transformers import AutoTokenizer
+from torch.utils.data import TensorDataset, Dataset
+import json
+import pickle
+import numpy as np
+import unicodedata
+import itertools
+import math
+from tqdm import tqdm
+import re
+import timeit
+
+ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig,  RobertaConfig)), ())
+
+MODEL_CLASSES = {
+    'bert': (BertConfig, BertForNER, BertTokenizer),
+    'bertspan': (BertConfig, BertForSpanNER, BertTokenizer),
+    'bertspanmarker': (BertConfig, BertForSpanMarkerNER, BertTokenizer),
+    'bertspanmarkerbi': (BertConfig, BertForSpanMarkerBiNER, BertTokenizer),
+    'bertleftlm': (BertConfig, BertForLeftLMNER, BertTokenizer),
+    'roberta': (RobertaConfig, RobertaForNER, RobertaTokenizer),
+    'robertaspan': (RobertaConfig, RobertaForSpanNER, RobertaTokenizer),
+    'robertaspanmarker': (RobertaConfig, RobertaForSpanMarkerNER, RobertaTokenizer),
+    'albert': (AlbertConfig, AlbertForNER, AlbertTokenizer),
+    'albertspan': (AlbertConfig, AlbertForSpanNER, AlbertTokenizer),
+    'albertspanmarker': (AlbertConfig, AlbertForSpanMarkerNER, AlbertTokenizer),
+}
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    
+def print_progress(curr, full, prefix="", bar_size=30):    
+    bar = int((curr+1)/full*bar_size)
+    sys.stdout.write(f"\r{prefix}[{'='*bar}{' '*(bar_size-bar)}] {curr+1}/{full}")
+    sys.stdout.flush()
+
+class ACEDatasetNER(Dataset):
+    def __init__(self, tokenizer, args=None, evaluate=False, do_test=False):
+        if not evaluate:
+            file_path = os.path.join(args.data_dir, args.train_file)
+        else:
+            if do_test:
+                file_path = os.path.join(args.data_dir, args.test_file)
+            else:
+                file_path = os.path.join(args.data_dir, args.dev_file)
+
+        
+        print(f"\n{bcolors.OKBLUE}Extracting Entity from: {bcolors.ENDC}{file_path}\n")
+        assert os.path.isfile(file_path)
+
+        self.file_path = file_path
+                
+        self.tokenizer = tokenizer
+        self.max_seq_length = args.max_seq_length
+
+        self.evaluate = evaluate
+        self.local_rank = args.local_rank
+        self.args = args
+        self.model_type = args.model_type
+
+
+        self.ner_label_list = ['NIL', 'Method', 'OtherScientificTerm', 'Task', 'Generic', 'Material', 'Metric']
+
+
+        self.max_pair_length = args.max_pair_length
+
+        self.max_entity_length = args.max_pair_length * 2
+        self.initialize()
+
+    def is_punctuation(self, char):
+        # obtained from:
+        # https://github.com/huggingface/transformers/blob/5f25a5f367497278bf19c9994569db43f96d5278/transformers/tokenization_bert.py#L489
+        cp = ord(char)
+        if (cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126):
+            return True
+        cat = unicodedata.category(char)
+        if cat.startswith("P"):
+            return True
+        return False 
+
+    def get_original_token(self, token):
+        escape_to_original = {
+            "-LRB-": "(",
+            "-RRB-": ")",
+            "-LSB-": "[",
+            "-RSB-": "]",
+            "-LCB-": "{",
+            "-RCB-": "}",
+        }
+        if token in escape_to_original:
+            token = escape_to_original[token]
+        return token
+        
+    
+    def initialize(self):
+        tokenizer = self.tokenizer
+        max_num_subwords = self.max_seq_length - 2
+
+        ner_label_map = {label: i for i, label in enumerate(self.ner_label_list)}
+
+        def tokenize_word(text):
+            if (
+                isinstance(tokenizer, RobertaTokenizer)
+                and (text[0] != "'")
+                and (len(text) != 1 or not self.is_punctuation(text))
+            ):
+                return tokenizer.tokenize(text, add_prefix_space=True)
+            return tokenizer.tokenize(text)
+
+        len_f = sum(1 for line in open(self.file_path))
+        f = open(self.file_path, "r", encoding='utf-8')
+        self.data = []
+        self.tot_recall = 0
+        self.ner_golden_labels = set([])
+        maxL = 0
+        maxR = 0
+        
+        for l_idx, line in enumerate(f):
+            print_progress(l_idx, len_f, prefix=f"{bcolors.OKBLUE}Loading {self.args.test_file}: {bcolors.ENDC}")
+            data = json.loads(line)
+            # if len(self.data) > 5:
+            #     break
+
+            if self.args.output_dir.find('test')!=-1:
+                if len(self.data) > 5:
+                    break
+
+            sentences = data['sentences']
+            for i in range(len(sentences)):
+                for j in range(len(sentences[i])):
+                    sentences[i][j] = self.get_original_token(sentences[i][j])
+            
+            ners = data['ner']
+
+            sentence_boundaries = [0]
+            words = []
+            L = 0
+            for i in range(len(sentences)):
+                L += len(sentences[i])
+                sentence_boundaries.append(L)
+                words += sentences[i]
+
+            tokens = [tokenize_word(w) for w in words]
+            subwords = [w for li in tokens for w in li]
+            maxL = max(len(tokens), maxL)
+            subword2token = list(itertools.chain(*[[i] * len(li) for i, li in enumerate(tokens)]))
+            token2subword = [0] + list(itertools.accumulate(len(li) for li in tokens))
+            subword_start_positions = frozenset(token2subword)
+            subword_sentence_boundaries = [sum(len(li) for li in tokens[:p]) for p in sentence_boundaries]
+
+            for n in range(len(subword_sentence_boundaries) - 1):
+                sentence_ners = ners[n]
+
+                self.tot_recall += len(sentence_ners)
+                entity_labels = {}
+                for start, end, label in sentence_ners:
+                    entity_labels[(token2subword[start], token2subword[end+1])] = ner_label_map[label]    
+                    self.ner_golden_labels.add( ((l_idx, n), (start, end), label) )
+
+                doc_sent_start, doc_sent_end = subword_sentence_boundaries[n : n + 2]
+
+                left_length = doc_sent_start
+                right_length = len(subwords) - doc_sent_end
+                sentence_length = doc_sent_end - doc_sent_start
+                half_context_length = int((max_num_subwords - sentence_length) / 2)
+
+                if left_length < right_length:
+                    left_context_length = min(left_length, half_context_length)
+                    right_context_length = min(right_length, max_num_subwords - left_context_length - sentence_length)
+                else:
+                    right_context_length = min(right_length, half_context_length)
+                    left_context_length = min(left_length, max_num_subwords - right_context_length - sentence_length)
+                if self.args.output_dir.find('ctx0')!=-1:
+                    left_context_length = right_context_length = 0 # for debug
+
+                doc_offset = doc_sent_start - left_context_length
+                target_tokens = subwords[doc_offset : doc_sent_end + right_context_length]
+                assert(len(target_tokens)<=max_num_subwords)
+                target_tokens = [tokenizer.cls_token] + target_tokens + [tokenizer.sep_token]
+                
+                entity_infos = []
+
+                for entity_start in range(left_context_length, left_context_length + sentence_length):
+                    doc_entity_start = entity_start + doc_offset
+                    if doc_entity_start not in subword_start_positions:
+                        continue
+                    for entity_end in range(entity_start + 1, left_context_length + sentence_length + 1):
+                        doc_entity_end = entity_end + doc_offset
+                        if doc_entity_end not in subword_start_positions:
+                            continue
+
+                        if subword2token[doc_entity_end - 1] - subword2token[doc_entity_start] + 1 > self.args.max_mention_ori_length:
+                            continue
+
+                        label = entity_labels.get((doc_entity_start, doc_entity_end), 0)
+                        entity_labels.pop((doc_entity_start, doc_entity_end), None)
+                        entity_infos.append(((entity_start+1, entity_end), label, (subword2token[doc_entity_start], subword2token[doc_entity_end - 1] )))
+                # if len(entity_labels):
+                #     print ((entity_labels))
+                # assert(len(entity_labels)==0)
+                    
+                # dL = self.max_pair_length 
+                # maxR = max(maxR, len(entity_infos))
+                # for i in range(0, len(entity_infos), dL):
+                #     examples = entity_infos[i : i + dL]
+                #     item = {
+                #         'sentence': target_tokens,
+                #         'examples': examples,
+                #         'example_index': (l_idx, n),
+                #         'example_L': len(entity_infos)
+                #     }                
+                    
+                #     self.data.append(item)                    
+                maxR = max(maxR, len(entity_infos))
+                dL = self.max_pair_length 
+                if self.args.shuffle:
+                    random.shuffle(entity_infos)
+                if self.args.group_sort:
+                    group_axis = np.random.randint(2)
+                    sort_dir = bool(np.random.randint(2))
+                    entity_infos.sort(key=lambda x: (x[0][group_axis], x[0][1-group_axis]), reverse=sort_dir)
+
+                if not self.args.group_edge:
+                    for i in range(0, len(entity_infos), dL):
+
+                        examples = entity_infos[i : i + dL]
+                        item = {
+                            'sentence': target_tokens,
+                            'examples': examples,
+                            'example_index': (l_idx, n),
+                            'example_L': len(entity_infos),
+                            'doc_key': l_idx,
+                            # 'doc_key': data['doc_key'],
+                        }        
+                        self.data.append(item)
+                else:
+                    if self.args.group_axis==-1:
+                        group_axis = np.random.randint(2)
+                    else:
+                        group_axis = self.args.group_axis
+                    sort_dir = bool(np.random.randint(2))
+                    entity_infos.sort(key=lambda x: (x[0][group_axis], x[0][1-group_axis]), reverse=sort_dir)
+                    _start = 0 
+                    while _start < len(entity_infos):
+                        _end = _start+dL
+                        if _end >= len(entity_infos):
+                            _end = len(entity_infos)
+                        else:
+                            while  entity_infos[_end-1][0][group_axis]==entity_infos[_end][0][group_axis] and _end > _start:
+                                _end -= 1
+                            if _start == _end:
+                                _end = _start+dL
+
+                        examples = entity_infos[_start: _end]
+
+                        item = {
+                            'sentence': target_tokens,
+                            'examples': examples,
+                            'example_index': (l_idx, n),
+                            'example_L': len(entity_infos),
+                            'doc_key': l_idx
+                            # 'doc_key': data['doc_key'],
+                        }  
+                                       
+
+                        self.data.append(item)   
+                        _start = _end                 
+
+
+        # exit()  
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        entry = self.data[idx]
+
+        input_ids = self.tokenizer.convert_tokens_to_ids(entry['sentence'])
+        L = len(input_ids)
+
+        input_ids += [0] * (self.max_seq_length - len(input_ids))
+        position_plus_pad = int(self.model_type.find('roberta')!=-1) * 2
+
+        if self.model_type not in ['bertspan', 'robertaspan', 'albertspan']:
+
+            if self.model_type.startswith('albert'):
+                input_ids = input_ids + [30000] * (len(entry['examples'])) + [0] * (self.max_pair_length - len(entry['examples']))   
+                input_ids = input_ids + [30001] * (len(entry['examples'])) + [0] * (self.max_pair_length - len(entry['examples']))
+            elif self.model_type.startswith('roberta'):
+                input_ids = input_ids + [50261] * (len(entry['examples'])) + [0] * (self.max_pair_length - len(entry['examples']))   
+                input_ids = input_ids + [50262] * (len(entry['examples'])) + [0] * (self.max_pair_length - len(entry['examples']))
+            else:
+                input_ids = input_ids + [1] * (len(entry['examples'])) + [0] * (self.max_pair_length - len(entry['examples']))   
+                input_ids = input_ids + [2] * (len(entry['examples'])) + [0] * (self.max_pair_length - len(entry['examples']))
+
+            attention_mask = torch.zeros((self.max_entity_length + self.max_seq_length, self.max_entity_length + self.max_seq_length), dtype=torch.int64)
+            attention_mask[:L, :L] = 1
+            position_ids = list(range(position_plus_pad, position_plus_pad+self.max_seq_length)) + [0] * self.max_entity_length 
+
+        else:
+            attention_mask = [1] * L + [0] * (self.max_seq_length - L)
+            attention_mask = torch.tensor(attention_mask, dtype=torch.int64)
+            position_ids = list(range(position_plus_pad, position_plus_pad+self.max_seq_length)) + [0] * self.max_entity_length 
+
+
+
+        labels = []
+        mentions = []
+        mention_pos = []
+        num_pair = self.max_pair_length
+
+        full_attention_mask = [1] * L + [0] * (self.max_seq_length - L) + [0] * (self.max_pair_length)*2
+
+        for x_idx, x in enumerate(entry['examples']):
+            m1 = x[0]
+            label = x[1]
+            mentions.append(x[2])
+            mention_pos.append((m1[0], m1[1]))
+            labels.append(label)
+
+            if self.model_type in ['bertspan', 'robertaspan', 'albertspan']:
+                continue
+
+            w1 = x_idx  
+            w2 = w1 + num_pair
+
+            w1 += self.max_seq_length
+            w2 += self.max_seq_length
+            position_ids[w1] = m1[0]
+            position_ids[w2] = m1[1]
+
+            for xx in [w1, w2]:
+                full_attention_mask[xx] = 1
+                for yy in [w1, w2]:
+                    attention_mask[xx, yy] = 1
+                attention_mask[xx, :L] = 1
+
+        labels += [-1] * (num_pair - len(labels))
+        mention_pos += [(0, 0)] * (num_pair - len(mention_pos))
+
+
+
+        item = [torch.tensor(entry['doc_key']),
+                torch.tensor(input_ids),
+                attention_mask,
+                torch.tensor(position_ids),
+                torch.tensor(labels, dtype=torch.int64),
+                torch.tensor(mention_pos),
+                torch.tensor(full_attention_mask)
+        ]       
+
+        if self.evaluate:
+            item.append(entry['example_index'])
+            item.append(mentions)
+            
+        # item.append()
+        # for it in item:
+        #     print(type(it))
+        #     if isinstance(it, list):
+        #         print("\t", type(it[0]))
+        # print("="*50)
+            
+
+
+        return item
+
+    @staticmethod
+    def collate_fn(batch):
+        fields = [x for x in zip(*batch)]
+
+        num_metadata_fields = 2
+        stacked_fields = [torch.stack(field) for field in fields[:-num_metadata_fields]]  # don't stack metadata fields
+        stacked_fields.extend(fields[-num_metadata_fields:])  # add them as lists not torch tensors
+
+        return stacked_fields
+
+def set_seed(args):
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if args.n_gpu > 0:
+        torch.cuda.manual_seed_all(args.seed)
+
+
+
+def _rotate_checkpoints(args, checkpoint_prefix, use_mtime=False):
+    if not args.save_total_limit:
+        return
+    if args.save_total_limit <= 0:
+        return
+
+    # Check if we should delete older checkpoint(s)
+    glob_checkpoints = glob.glob(os.path.join(args.output_dir, '{}-*'.format(checkpoint_prefix)))
+    if len(glob_checkpoints) <= args.save_total_limit:
+        return
+
+    ordering_and_checkpoint_path = []
+    for path in glob_checkpoints:
+        if use_mtime:
+            ordering_and_checkpoint_path.append((os.path.getmtime(path), path))
+        else:
+            regex_match = re.match('.*{}-([0-9]+)'.format(checkpoint_prefix), path)
+            if regex_match and regex_match.groups():
+                ordering_and_checkpoint_path.append((int(regex_match.groups()[0]), path))
+
+    checkpoints_sorted = sorted(ordering_and_checkpoint_path)
+    checkpoints_sorted = [checkpoint[1] for checkpoint in checkpoints_sorted]
+    number_of_checkpoints_to_delete = max(0, len(checkpoints_sorted) - args.save_total_limit)
+    checkpoints_to_be_deleted = checkpoints_sorted[:number_of_checkpoints_to_delete]
+    for checkpoint in checkpoints_to_be_deleted:
+        shutil.rmtree(checkpoint)
+
+def scan_issue(args, model, tokenizer, prefix="", do_test=False, do_score=True, save_running=False, skip=[-1]):
+
+    eval_output_dir = args.output_dir
+
+    results = {}
+    
+    eval_dataset = ACEDatasetNER(tokenizer=tokenizer, args=args, evaluate=True, do_test=do_test)
+    ner_golden_labels = set(eval_dataset.ner_golden_labels)
+    ner_tot_recall = eval_dataset.tot_recall
+
+    if not os.path.exists(eval_output_dir) and args.local_rank in [-1, 0]:
+        os.makedirs(eval_output_dir)
+
+    args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
+
+    eval_sampler = SequentialSampler(eval_dataset) 
+
+    eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size,  collate_fn=ACEDatasetNER.collate_fn, num_workers=4*int(args.output_dir.find('test')==-1))
+
+    scores = defaultdict(dict)
+    predict_ners = defaultdict(list)
+
+    model.resize_token_embeddings(len(eval_dataset.tokenizer))
+    model.eval()
+
+    # start_time = timeit.default_timer() 
+    
+    # for batch in tqdm(eval_dataloader, desc=f"Extracting NER from {args.test_file}"):
+    total = len(eval_dataloader)
+    record_batch_path = f"_issue_files/batch/{args.output_dir}_{args.test_file[:-6]}.txt"
+    record_docID_path = f"_issue_files/doc_id/{args.output_dir}_{args.test_file[:-6]}.txt"
+    # issue_idx = np.array([])
+    for idx, batch in tqdm(enumerate(eval_dataloader), total=total, desc=f"Extracting NER from {args.test_file}"):        
+        # if idx<820: continue 
+        # if idx>830: break
+        if idx<skip[-1]-2: continue
+        if idx in skip: continue
+        
+        # if idx not in skip:
+        #     continue
+        # else:
+        #     print(idx, doc_id)
+        #     issue_idx = np.append(issue_idx, doc_id)
+        #     continue
+        
+        doc_id = batch[0].cpu().detach().numpy()
+        
+        try:
+            indexs = batch[-2]
+            batch_m2s = batch[-1]
+
+            batch = tuple(t.to(args.device) for t in batch[:-2])
+
+            with torch.no_grad():
+
+                inputs = {'input_ids':      batch[1],
+                          'attention_mask': batch[2],
+                          'position_ids':   batch[3],
+                        #   'labels':         batch[4]
+                          }
+
+                if args.model_type.find('span')!=-1:
+                    inputs['mention_pos'] = batch[5]
+                if args.use_full_layer!=-1:
+                    inputs['full_attention_mask']= batch[6]
+
+                outputs = model(**inputs)
+
+
+#                 ner_logits = outputs[0]
+#                 ner_logits = torch.nn.functional.softmax(ner_logits, dim=-1)
+#                 ner_values, ner_preds = torch.max(ner_logits, dim=-1)
+
+#                 for i in range(len(indexs)):
+#                     index = indexs[i]
+#                     m2s = batch_m2s[i]
+#                     for j in range(len(m2s)):
+#                         obj = m2s[j]
+#                         ner_label = eval_dataset.ner_label_list[ner_preds[i,j]]
+#                         if ner_label!='NIL':
+#                             scores[(index[0], index[1])][(obj[0], obj[1])] = (float(ner_values[i,j]), ner_label)
+        except Exception as e:
+            print(f"ERROR at {idx}")
+            # =============== Record error batch ===============
+            try:
+                with open(record_batch_path, 'r') as f:
+                    text = f.read()
+                if text == "":
+                    with open(record_batch_path, 'w') as f:
+                        f.write(f"{idx}")
+                else:
+                    with open(record_batch_path, 'a') as f:
+                        f.write(f", {idx}")
+                    
+            except:
+                with open(record_batch_path, 'w') as f:
+                    f.write(f"{idx}")
+            # =============== Rocord error doc_id ===============
+            # Read exist doc_id
+            try:
+                with open(record_docID_path, 'r') as f:
+                    docId_list = (f.read()).split(",") 
+                docId_array = np.array([int(docId) for docId in docId_list])
+            except:
+                docId_array = np.array([])
+            print(f"Previous doc id: {docId_array}")
+            # Merge doc_id
+            print(f"New doc id: {doc_id}")
+            docId_array = np.unique(np.append(docId_array, doc_id))
+            docId_str = ", ".join([str(int(docId)) for docId in docId_array])
+            # Merge and write doc_id
+            with open(record_docID_path, 'w') as f:
+                print(record_docID_path)
+                f.write(docId_str)
+            print(f"Saved doc id: {docId_str}")
+            return
+        
+    # print(np.unique(issue_idx))
+    with open(record_batch_path, 'a') as f:
+        f.write(f", FINISH")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    ## Required parameters
+    parser.add_argument("--data_dir", default='ace_data', type=str, required=True,
+                        help="The input data dir. Should contain the .tsv files (or other data files) for the task.")
+    parser.add_argument("--model_type", default=None, type=str, required=True,
+                        help="Model type selected in the list: " + ", ".join(MODEL_CLASSES.keys()))
+    parser.add_argument("--model_name_or_path", default=None, type=str, required=True,
+                        help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS))
+    parser.add_argument("--output_dir", default=None, type=str, required=True,
+                        help="The output directory where the model predictions and checkpoints will be written.")
+
+    ## Other parameters
+    parser.add_argument("--config_name", default="", type=str,
+                        help="Pretrained config name or path if not the same as model_name")
+    parser.add_argument("--tokenizer_name", default="", type=str,
+                        help="Pretrained tokenizer name or path if not the same as model_name")
+    parser.add_argument("--cache_dir", default="", type=str,
+                        help="Where do you want to store the pre-trained models downloaded from s3")
+    parser.add_argument("--max_seq_length", default=384, type=int,
+                        help="The maximum total input sequence length after tokenization. Sequences longer "
+                             "than this will be truncated, sequences shorter will be padded.")
+    parser.add_argument("--do_train", action='store_true',
+                        help="Whether to run training.")
+    parser.add_argument("--do_eval", action='store_true',
+                        help="Whether to run eval on the dev set.")
+    parser.add_argument("--do_test", action='store_true',
+                        help="Whether to run test on the dev set.")
+
+    parser.add_argument("--evaluate_during_training", action='store_true',
+                        help="Rul evaluation during training at each logging step.")
+    parser.add_argument("--do_lower_case", action='store_true',
+                        help="Set this flag if you are using an uncased model.")
+
+    parser.add_argument("--per_gpu_train_batch_size", default=8, type=int,
+                        help="Batch size per GPU/CPU for training.")
+    parser.add_argument("--per_gpu_eval_batch_size", default=8, type=int,
+                        help="Batch size per GPU/CPU for evaluation.")
+    parser.add_argument('--gradient_accumulation_steps', type=int, default=1,
+                        help="Number of updates steps to accumulate before performing a backward/update pass.")
+    parser.add_argument("--learning_rate", default=2e-5, type=float,
+                        help="The initial learning rate for Adam.")
+    parser.add_argument("--weight_decay", default=0.0, type=float,
+                        help="Weight deay if we apply some.")
+    parser.add_argument("--adam_epsilon", default=1e-8, type=float,
+                        help="Epsilon for Adam optimizer.")
+    parser.add_argument("--max_grad_norm", default=1.0, type=float,
+                        help="Max gradient norm.")
+    parser.add_argument("--num_train_epochs", default=3.0, type=float,
+                        help="Total number of training epochs to perform.")
+    parser.add_argument("--max_steps", default=-1, type=int,
+                        help="If > 0: set total number of training steps to perform. Override num_train_epochs.")
+    parser.add_argument("--warmup_steps", default=-1, type=int,
+                        help="Linear warmup over warmup_steps.")
+
+    parser.add_argument('--logging_steps', type=int, default=5,
+                        help="Log every X updates steps.")
+    parser.add_argument('--save_steps', type=int, default=1000,
+                        help="Save checkpoint every X updates steps.")
+    parser.add_argument("--eval_all_checkpoints", action='store_true',
+                        help="Evaluate all checkpoints starting with the same prefix as model_name ending and ending with step number")
+    parser.add_argument("--no_cuda", action='store_true',
+                        help="Avoid using CUDA when available")
+    parser.add_argument('--overwrite_output_dir', action='store_true',
+                        help="Overwrite the content of the output directory")
+    parser.add_argument('--overwrite_cache', action='store_true',
+                        help="Overwrite the cached training and evaluation sets")
+    parser.add_argument('--seed', type=int, default=42,
+                        help="random seed for initialization")
+
+    parser.add_argument('--fp16', action='store_true',
+                        help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit")
+    parser.add_argument('--fp16_opt_level', type=str, default='O1',
+                        help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
+                             "See details at https://nvidia.github.io/apex/amp.html")
+    parser.add_argument("--local_rank", type=int, default=-1,
+                        help="For distributed training: local_rank")
+    parser.add_argument('--server_ip', type=str, default='', help="For distant debugging.")
+    parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
+    parser.add_argument('--save_total_limit', type=int, default=1,
+                        help='Limit the total amount of checkpoints, delete the older checkpoints in the output_dir, does not delete by default')
+
+
+    parser.add_argument("--train_file",  default="train.json", type=str)
+    parser.add_argument("--dev_file",  default="dev.json", type=str)
+    parser.add_argument("--test_file",  default="test.json", type=str)
+
+    parser.add_argument('--alpha', type=float, default=1,  help="")
+    parser.add_argument('--max_pair_length', type=int, default=256,  help="")
+    parser.add_argument('--max_mention_ori_length', type=int, default=8,  help="")
+    parser.add_argument('--lminit', action='store_true')
+    parser.add_argument('--norm_emb', action='store_true')
+    parser.add_argument('--output_results', action='store_true')
+    parser.add_argument('--onedropout', action='store_true')
+    parser.add_argument('--no_test', action='store_true')
+    parser.add_argument('--use_full_layer', type=int, default=-1,  help="")
+    parser.add_argument('--shuffle', action='store_true')
+    parser.add_argument('--group_edge', action='store_true')
+    parser.add_argument('--group_axis', type=int, default=-1,  help="")
+    parser.add_argument('--group_sort', action='store_true')
+
+    parser.add_argument("--output_file",  default="None", type=str)
+
+    args = parser.parse_args()
+    
+
+#     if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train and not args.overwrite_output_dir:
+#         raise ValueError("Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(args.output_dir))
+    
+#     def create_exp_dir(path, scripts_to_save=None):
+#         if args.output_dir.endswith("test"):
+#             return
+#         if not os.path.exists(path):
+#             os.mkdir(path)
+
+#         print('Experiment dir : {}'.format(path))
+#         if scripts_to_save is not None:
+#             if not os.path.exists(os.path.join(path, 'scripts')):
+#                 os.mkdir(os.path.join(path, 'scripts'))
+#             for script in scripts_to_save:
+#                 dst_file = os.path.join(path, 'scripts', os.path.basename(script))
+#                 shutil.copyfile(script, dst_file)
+
+#     if args.do_train and args.local_rank in [-1, 0] and args.output_dir.find('test')==-1:
+#         create_exp_dir(args.output_dir, scripts_to_save=['run_acener.py', 'transformers/src/transformers/modeling_bert.py',  'transformers/src/transformers/modeling_albert.py'])
+
+    # Setup distant debugging if needed
+    if args.server_ip and args.server_port:
+        # Distant debugging - see https://code.visualstudio.com/docs/python/debugging#_attach-to-a-local-script
+        import ptvsd
+        print("Waiting for debugger attach")
+        ptvsd.enable_attach(address=(args.server_ip, args.server_port), redirect_output=True)
+        ptvsd.wait_for_attach()
+
+    # Setup CUDA, GPU & distributed training
+    if args.local_rank == -1 or args.no_cuda:
+        device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
+        args.n_gpu = torch.cuda.device_count()
+    else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
+        torch.cuda.set_device(args.local_rank)
+        device = torch.device("cuda", args.local_rank)
+        torch.distributed.init_process_group(backend='nccl')
+        args.n_gpu = 1
+    args.device = device
+
+    # Set seed
+    num_labels = 7
+
+    # Load pretrained model and tokenizer
+    if args.local_rank not in [-1, 0]:
+        torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
+
+
+    args.model_type = args.model_type.lower()
+
+    config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+
+    config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels)
+    tokenizer = tokenizer_class.from_pretrained(args.model_name_or_path,  do_lower_case=args.do_lower_case)
+
+    config.max_seq_length = args.max_seq_length
+    config.alpha = args.alpha
+    config.onedropout = args.onedropout
+    config.use_full_layer= args.use_full_layer
+
+    model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path), config=config)
+
+    if args.model_type.startswith('albert'):
+        special_tokens_dict = {'additional_special_tokens': ['[unused' + str(x) + ']' for x in range(4)]}
+        tokenizer.add_special_tokens(special_tokens_dict)
+        # print ('add tokens:', tokenizer.additional_special_tokens)
+        # print ('add ids:', tokenizer.additional_special_tokens_ids)
+        model.albert.resize_token_embeddings(len(tokenizer))
+
+    if args.do_train and args.lminit: 
+        if args.model_type.find('roberta')==-1:
+            entity_id = tokenizer.encode('entity', add_special_tokens=False)
+            assert(len(entity_id)==1)
+            entity_id = entity_id[0]
+            mask_id = tokenizer.encode('[MASK]', add_special_tokens=False)
+            assert(len(mask_id)==1)
+            mask_id = mask_id[0]
+        else:
+            entity_id = 10014
+            mask_id = 50264
+
+        if args.model_type.startswith('albert'):
+            word_embeddings = model.albert.embeddings.word_embeddings.weight.data
+            word_embeddings[30000].copy_(word_embeddings[mask_id])   
+            word_embeddings[30001].copy_(word_embeddings[entity_id])   
+        elif args.model_type.startswith('roberta'):
+            word_embeddings = model.roberta.embeddings.word_embeddings.weight.data
+            word_embeddings[50261].copy_(word_embeddings[mask_id])   # entity
+            word_embeddings[50262].data.copy_(word_embeddings[entity_id]) 
+        else:
+            word_embeddings = model.bert.embeddings.word_embeddings.weight.data
+            word_embeddings[1].copy_(word_embeddings[mask_id])  
+            word_embeddings[2].copy_(word_embeddings[entity_id])     # entity
+
+    if args.local_rank == 0:
+        torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
+
+    model.to(args.device)
+    
+    try:
+        record_batch_path = f"_issue_files/batch/{args.output_dir}_{args.test_file[:-6]}.txt"
+        with open(record_batch_path, 'r') as f:
+            skip_list = (f.read()).split(", ")
+        skip_list = [int(batch) for batch in skip_list]
+    except Exception:
+        skip_list = [-99]
+    print(skip_list)
+    scan_issue(args, model, tokenizer, do_test=True, do_score=False, skip=skip_list)
+    
+
+
+
+
+if __name__ == "__main__":
+    main()

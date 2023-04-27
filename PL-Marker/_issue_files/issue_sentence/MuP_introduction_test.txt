@@ -1,0 +1,71 @@
+==================================================SP:006434d56992836ab9420d7d4215bc70664de304==================================================
+Explainability in AI is central to the practical impact of AI on society , thus making it critical to get right .
+While many dichotomies exist within the field — between local and global explanations ( Ribeiro et al . , 2016 ) , between post hoc and intrinsic interpretability ( Rudin , 2019 ) , and between model - agnostic and model - specific methods ( Shrikumar et al . , 2017 ) — in this work we focus on local , post - hoc , model - agnostic explainability as it provides insight into individual model predictions , does not limit model expressiveness , and is comparable across model types . 
+
+In this context , explainability can be treated as a problem of attribution .
+Shapley values ( Shapley , 1953 ) provide the unique attribution method satisfying a set of intuitive axioms , e.g. they capture all interactions between features and sum to the model prediction .
+The Shapley approach to explainability has matured over the last two decades ( Lipovetsky & Conklin , 2001 ; Kononenko et al . , 2010 ; Štrumbelj & Kononenko , 2014 ; Datta et al . , 2016 ; Lundberg & Lee , 2017 ) . 
+
+Implementations of Shapley explainability suffer from a problem common across model - agnostic methods : they involve marginalisation over features , achieved by splicing data points together and evaluating the model on highly unrealistic inputs ( e.g. Fig . 1 ) .
+Such splicing would only be justified if all features were independent ; otherwise , spliced data lies off the data manifold . 
+
+Outside the Shapley paradigm , emerging explainability methods have begun to address this problem .
+See e.g. Anders et al .
+( 2020 ) for a general treatment of the off - manifold problem in gradient - based explainability .
+See also Chang et al . ( 2019 ) and Agarwal et al . ( 2019 ) for image - specific explanations that respect the data distribution . 
+
+Within Shapley explainability , initial work towards remedying the off - manifold problem has emerged ;
+e.g. Aas et al . ( 2019 ) and Sundararajan & Najmi ( 2019 ) explore empirical and kernelbased estimation techniques , but these methods do not scale to complex data .
+A satisfactorily general and performant solution to computing Shapley values on the data manifold has yet to appear and is a focus of this work .
+Our main contributions are twofold : 
+ • Sec .
+3 compares on-
+and off - manifold explainability , focusing on novel and unambiguous shortcomings of off - manifold Shapley values .
+In particular , we show that off - manifold explanations are often incorrect , and that they can hide implicit model dependence on sensitive features . 
+
+Published as a conference paper at ICLR 2021 
+ Splice 5 
+ < latexit sha1_base64="yCB0E2tw1x0DkKxhwLq9jLEN86A=">AAAB+nicbVDLTgJBEJz1ifha9OhlIjHxRHaJRA8eSLx4xCiPBAiZHXphwuwjM70qWfkULx40xqtf4s2 / cYA9KFhJJ5Wq7nR3ebEUGh3n21pZXVvf2Mxt5bd3dvf27cJBQ0eJ4lDnkYxUy2MapAihjgIltGIFLPAkNL3R1dRv3oPSIgrvcBxDN2CDUPiCMzRSzy50EB7R89Nbs40DrUx6dtEpOTPQZeJmpEgy1Hr2V6cf8SSAELlkWrddJ8ZuyhQKLmGS7yQaYsZHbABtQ0MWgO6ms9Mn9MQofepHylSIdKb+nkhZoPU48ExnwHCoF72p+J / XTtC/6KYijBOEkM8X+YmkGNFpDrQvFHCUY0MYV8LcSvmQKcbRpJU3IbiLLy+TRrnknpUqN+Vi9TKLI0eOyDE5JS45J1VyTWqkTjh5IM / klbxZT9aL9W59zFtXrGzmkPyB9fkDK02T6w==</latexit > 
+ Splice 4 
+ < latexit sha1_base64="gCVxNNwtqI4Z / J33PD2j0BRng4Y=">AAAB+nicbVDLTgJBEJz1ifha9OhlIjHxRHYJRg8eSLx4xCiPBAiZHXphwuwjM70qWfkULx40xqtf4s2 / cYA9KFhJJ5Wq7nR3ebEUGh3n21pZXVvf2Mxt5bd3dvf27cJBQ0eJ4lDnkYxUy2MapAihjgIltGIFLPAkNL3R1dRv3oPSIgrvcBxDN2CDUPiCMzRSzy50EB7R89Nbs40DrUx6dtEpOTPQZeJmpEgy1Hr2V6cf8SSAELlkWrddJ8ZuyhQKLmGS7yQaYsZHbABtQ0MWgO6ms9Mn9MQofepHylSIdKb+nkhZoPU48ExnwHCoF72p+J / XTtC/6KYijBOEkM8X+YmkGNFpDrQvFHCUY0MYV8LcSvmQKcbRpJU3IbiLLy+TRrnkVkpnN+Vi9TKLI0eOyDE5JS45J1VyTWqkTjh5IM / klbxZT9aL9W59zFtXrGzmkPyB9fkDKciT6g==</latexit > 
+
+Splice 3 
+ < latexit sha1_base64="OUFa711OF0i1H2+OmYSW / tsIDXQ=">AAAB+nicbVDLTgJBEJz1ifha9OhlIjHxRHZRowcPJF48YpRHAoTMDr0wYfaRmV6VrHyKFw8a49Uv8ebfOMAeFKykk0pVd7q7vFgKjY7zbS0tr6yurec28ptb2zu7dmGvrqNEcajxSEaq6TENUoRQQ4ESmrECFngSGt7wauI37kFpEYV3OIqhE7B+KHzBGRqpaxfaCI / o+emt2caBnoy7dtEpOVPQReJmpEgyVLv2V7sX8SSAELlkWrdcJ8ZOyhQKLmGcbycaYsaHrA8tQ0MWgO6k09PH9MgoPepHylSIdKr+nkhZoPUo8ExnwHCg572J+J / XStC/6KQijBOEkM8W+YmkGNFJDrQnFHCUI0MYV8LcSvmAKcbRpJU3IbjzLy+SernknpbObsrFymUWR44ckENyTFxyTirkmlRJjXDyQJ7JK3mznqwX6936mLUuWdnMPvkD6 / MHKEOT6Q==</latexit > 
+ Splice 2 
+ < latexit sha1_base64="QooK9l0e7gUvjZHG / otF9YrENds=">AAAB+nicbVDLTgJBEJzFF+Jr0aOXicTEE9klGj14IPHiEaM8EiBkduiFCbOPzPSqZOVTvHjQGK9+iTf / xgH2oGAlnVSqutPd5cVSaHScbyu3srq2vpHfLGxt7+zu2cX9ho4SxaHOIxmplsc0SBFCHQVKaMUKWOBJaHqjq6nfvAelRRTe4TiGbsAGofAFZ2iknl3sIDyi56e3ZhsHWpn07JJTdmagy8TNSIlkqPXsr04/4kkAIXLJtG67TozdlCkUXMKk0Ek0xIyP2ADahoYsAN1NZ6dP6LFR+tSPlKkQ6Uz9PZGyQOtx4JnOgOFQL3pT8T+vnaB/0U1FGCcIIZ8v8hNJMaLTHGhfKOAox4YwroS5lfIhU4yjSatgQnAXX14mjUrZPS2f3VRK1cssjjw5JEfkhLjknFTJNamROuHkgTyTV / JmPVkv1rv1MW / NWdnMAfkD6 / MHJr6T6A==</latexit > 
+ Splice 1 
+ < latexit sha1_base64="jMyglLcBIiKnMTvaBhDA6HA7vK4=">AAAB+nicbVDLTgJBEJzFF+Jr0aOXicTEE9klGj14IPHiEaM8EiBkduiFCbOPzPSqZOVTvHjQGK9+iTf / xgH2oGAlnVSqutPd5cVSaHScbyu3srq2vpHfLGxt7+zu2cX9ho4SxaHOIxmplsc0SBFCHQVKaMUKWOBJaHqjq6nfvAelRRTe4TiGbsAGofAFZ2iknl3sIDyi56e3ZhsH6k56dskpOzPQZeJmpEQy1Hr2V6cf8SSAELlkWrddJ8ZuyhQKLmFS6CQaYsZHbABtQ0MWgO6ms9Mn9NgofepHylSIdKb+nkhZoPU48ExnwHCoF72p+J / XTtC/6KYijBOEkM8X+YmkGNFpDrQvFHCUY0MYV8LcSvmQKcbRpFUwIbiLLy+TRqXsnpbPbiql6mUWR54ckiNyQlxyTqrkmtRInXDyQJ7JK3mznqwX6936mLfmrGzmgPyB9fkDJTmT5w==</latexit > 
+ Coalition 
+ < latexit sha1_base64="c67dDkQf5kNntg3pSZYluPUIw / I=">AAAB+3icbVBNS8NAEN34WetXrEcvi0XwVJKi6MFDoRePFewHtKFstpt26WYTdifSEvJXvHhQxKt / xJv / xk2bg7Y+GHi8N8PMPD8WXIPjfFsbm1vbO7ulvfL+weHRsX1S6egoUZS1aSQi1fOJZoJL1gYOgvVixUjoC9b1p83c7z4xpXkkH2EeMy8kY8kDTgkYaWhXBsBm4AdpMyKC51o2tKtOzVkArxO3IFVUoDW0vwajiCYhk0AF0brvOjF4KVHAqWBZeZBoFhM6JWPWN1SSkGkvXdye4QujjHAQKVMS8EL9PZGSUOt56JvOkMBEr3q5+J / XTyC49VIu4wSYpMtFQSIwRDgPAo+4YhTE3BBClXmdYjohilAwcZVNCO7qy+ukU6 + 5V7Xrh3q1cVfEUUJn6BxdIhfdoAa6Ry3URhTN0DN6RW9WZr1Y79bHsnXDKmZO0R9Ynz+/EJTi</latexit > 
+ Digit 
+ < latexit sha1_base64="Xnj3 + 0o3k9gBCL3dh2rGn0Z8kO4=">AAAB9XicbVA9SwNBEN3zM8avqKXNYhCswl1QtLAIaGEZwXxAEsPeZi5Zsrd37M6p4cj / sLFQxNb / Yue / cZNcoYkPBh7vzTAzz4+lMOi6387S8srq2npuI7 + 5tb2zW9jbr5so0RxqPJKRbvrMgBQKaihQQjPWwEJfQsMfXk38xgNoIyJ1h6MYOiHrKxEIztBK922EJ / SD9Fr0BY67haJbcqegi8TLSJFkqHYLX+1exJMQFHLJjGl5boydlGkUXMI4304MxIwPWR9alioWgumk06vH9NgqPRpE2pZCOlV / T6QsNGYU+rYzZDgw895E / M9rJRhcdFKh4gRB8dmiIJEUIzqJgPaEBo5yZAnjWthbKR8wzTjaoPI2BG/+5UVSL5e809LZbblYucziyJFDckROiEfOSYXckCqpEU40eSav5M15dF6cd+dj1rrkZDMH5A+czx8JBpLY</latexit >
+==================================================SP:7cda6bccf08887c7cef66d0ac3ccefdea8f5d7c8==================================================
+An important aspect of autonomous decision - making agents is the ability to reason about the unknown intentions and behaviours of other agents .
+Much research has been devoted to this opponent modelling problem [ 2 ] , with recent works focused on the use of deep learning architectures for opponent modelling and reinforcement learning ( RL )
+[ 20 , 34 , 16 , 33 ] . 
+
+A common assumption in existing methods is that the modelling agent has access to the local trajectory of the modelled agents
+[ 2 ] , which may include their local observations of the environment state , their past actions , and possibly their received rewards .
+While it is certainly desirable to be able to observe an agent ’s local context in order to reason about its past and future decisions , in practice such an assumption may be too restrictive .
+Agents may only have a limited view of their surroundings , communication with other agents may not be feasible or reliable [ 40 ] , and knowledge of the perception system of other agents may not be available
+[ 13 ] .
+In such cases , an agent must reason with only locally available information . 
+
+We consider the question : Can effective opponent modelling be achieved using only the locally available information of the modelling agent during execution ?
+A strength of deep learning techniques is their ability to identify informative features in data .
+Here , we use deep learning techniques to extract informative features from a stream of local observations for the purpose of opponent modelling . 
+
+Specifically , we consider multi - agent settings in which we control a single agent which must learn to interact with a set of opponent agents ( we use the term “ opponent ” in a neutral sense ) .
+We assume a given set of possible policies for opponent agents and that these policies are fixed ( that is , other agents do not simultaneously learn , such as in multi - agent RL [ 32 ] ) .
+We propose an opponent modelling method which is able to extract a compact yet informative representation of opponents given only the local information of the controlled agent , which includes its local state observations , past actions , and rewards .
+To this end , we use an encoder - decoder architecture based on variational autoencoders ( VAE )
+[ 26 ] .
+The VAE model is trained to replicate opponent actions and observations from the local information only .
+During training , the opponent ’s observations are utilised as reconstruction targets for the decoder ; after training , only the encoder component is retained which generates embeddings using local observations of the controlled agent .
+The learned embeddings condition the policy of the 
+ controlled agent in addition to its local observation , and the policy and VAE model are optimised concurrently during the RL learning process . 
+
+We evaluate our proposed method , called Local Information Opponent Modelling ( LIOM ) , in two benchmark environments used in multi - agent systems research , the multi - agent particle environment [ 31 , 28 ] and level - based foraging ( LBF )
+[ 1 ] .
+Our results support the idea that effective opponent modelling can be achieved using only local information during execution : the same RL algorithm generally achieved higher average returns when combined with our opponent embeddings than without , and in some cases the average returns are comparable to those achieved by an ideal baseline which has full access to the opponent ’s trajectory .
+We evaluate the method ’s ability to predict the opponent ’s actions , and provide an ablation study on the different types of local information used by the encoder .

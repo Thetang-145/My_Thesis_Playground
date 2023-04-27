@@ -1,0 +1,144 @@
+==================================================SP:7b258252a9063514348f5fa8d9c85afd85748747==================================================
+This paper has focused on a single disease ( COVID-19 ) , a single treatment ( dexamethasone ) , and a single expert model .
+The ultimate goal is to build a model that encompasses a variety of diseases , a variety of treatments and multiple expert models .
+This is a challenge for future work . 
+
+Acknowledgments and Disclosure of Funding 
+ This work was supported by the US Office of Naval Research ( ONR ) and the National Science Foundation ( NSF , Grant number:1722516 ) . 
+
+We would like to thank anonymous reviewers as well as members of the vanderschaar - lab for many insightful comments and suggestions . 
+
+We would like to thank the following individuals for providing domain expertise in Pharmacology and designing the expert ODEs . 
+
+Bernhard Steiert , PhD , Pharmaceutical Sciences , Roche Pharma Research and Early Development ( pRED ) , Roche Innovation Center Basel , Basel , Switzerland 
+ Richard Peck , MA , MB , BChir , FFPM , FRCP , Pharmaceutical Sciences , Roche Pharma Research and Early Development ( pRED ) , Roche Innovation Center Basel , Basel , Switzerland 
+ We would like to thank the following individuals for curating and sharing the Dutch Data Warehouse ( DDW ) for critically ill COVID-19 patients . 
+
+From collaborating hospitals having shared data : 
+ Diederik Gommers , MD , PhD , Department of Intensive Care , Erasmus Medical Center , Rotterdam , The Netherlands , 
+ Olaf L. Cremer , MD , PhD , Intensive Care , UMC Utrecht , Utrecht , The Netherlands , 
+ Rob J. Bosman , MD , ICU , OLVG , Amsterdam , The Netherlands , 
+ Sander Rigter , MD , Department of Anesthesiology and Intensive Care , St. Antonius Hospital , Nieuwegein , The Netherlands , 
+ Evert - Jan Wils , MD , PhD , Department of Intensive Care , Franciscus Gasthuis & Vlietland , Rotterdam , The Netherlands , 
+ Tim Frenzel , MD , PhD , Department of Intensive Care Medicine , Radboud University Medical Center , Nijmegen , The Netherlands , 
+ Dave A. Dongelmans , MD , PhD , Department of Intensive Care Medicine , Amsterdam UMC , Amsterdam , The Netherlands , 
+ Remko de Jong , MD , Intensive Care , Bovenij Ziekenhuis , Amsterdam , The Netherlands , 
+ Marco Peters , MD , Intensive Care , Canisius Wilhelmina Ziekenhuis , Nijmegen , The Netherlands , 
+ Marlijn J.A Kamps , MD , Intensive Care , Catharina Ziekenhuis Eindhoven , Eindhoven , The Netherlands , 
+ Dharmanand Ramnarain , MD , Department of Intensive Care , ETZ Tilburg , Tilburg , The Netherlands , 
+ Ralph Nowitzky , MD , Intensive Care , HagaZiekenhuis , Den Haag , The Netherlands , 
+ Fleur G.C.A. Nooteboom , MD , Intensive Care , Laurentius Ziekenhuis , Roermond , The Netherlands , 
+ Wouter de Ruijter , MD , PhD , Department of Intensive Care Medicine , Northwest Clinics , Alkmaar , The Netherlands , 
+ Louise C. Urlings - Strop , MD , PhD , Intensive Care , Reinier de Graaf Gasthuis , Delft , The Netherlands , 
+ Ellen G.M. Smit , MD , Intensive Care , Spaarne Gasthuis , Haarlem en Hoofddorp , The Netherlands , 
+ D. Jannet Mehagnoul - Schipper , MD , PhD , Intensive Care , VieCuri Medisch Centrum , Venlo , The Netherlands , 
+ Julia Koeter , MD , Intensive Care , Canisius Wilhelmina Ziekenhuis , Nijmegen , The Netherlands , 
+ Tom Dormans , MD , PhD , Intensive care , Zuyderland MC , Heerlen , The Netherlands , 
+ Cornelis P.C. de Jager , MD , PhD , Department of Intensive Care , Jeroen Bosch Ziekenhuis , Den Bosch , The Netherlands , 
+ Stefaan H.A. Hendriks , MD , Intensive Care , Albert Schweitzerziekenhuis , Dordrecht , The Netherlands , 
+ Sefanja Achterberg , MD , PhD , ICU , Haaglanden Medisch Centrum , Den Haag , The Netherlands , 
+ Evelien Oostdijk , MD , PhD , ICU , Maasstad Ziekenhuis Rotterdam , Rotterdam , The Netherlands , 
+ Auke C. Reidinga , MD , ICU , SEH , BWC , Martiniziekenhuis , Groningen , The Netherlands , 
+ Barbara Festen - Spanjer , MD , Intensive Care , Ziekenhuis Gelderse Vallei , Ede , The Netherlands , 
+ Gert B. Brunnekreef , MD , Department of Intensive Care , Ziekenhuisgroep Twente , Almelo , The Netherlands , 
+ Alexander D. Cornet , MD , PhD , FRCP , Department of Intensive Care , Medisch Spectrum Twente , Enschede , The Netherlands , 
+ Walter van den Tempel , MD , Department of Intensive Care , Ikazia Ziekenhuis Rotterdam , Rotterdam , The Netherlands , 
+ Age D. Boelens , MD , Anesthesiology , Antonius Ziekenhuis Sneek , Sneek , The Netherlands , 
+ Peter Koetsier , MD , Intensive Care , Medisch Centrum Leeuwarden , Leeuwarden , The Netherlands , 
+ Judith Lens , MD , ICU , IJsselland Ziekenhuis , Capelle aan den IJssel , The Netherlands , 
+ Roger van Rietschote , Business Intelligence , Haaglanden MC , Den Haag , The Netherlands , 
+ Harald J. Faber , MD , ICU , WZA , Assen , The Netherlands , 
+ A. Karakus , MD , Department of Intensive Care , Diakonessenhuis Hospital , Utrecht , The Netherlands , 
+ Robert Entjes , MD , Department of Intensive Care , Admiraal De Ruyter Ziekenhuis , Goes , The Netherlands , 
+ Paul de Jong , MD , Department of Anesthesia and Intensive Care , Slingeland Ziekenhuis , Doetinchem , The Netherlands , 
+ Thijs C.D. Rettig , MD , PhD , Department of Intensive Care , Amphia Ziekenhuis , Breda , The Netherlands , 
+ M.C. Reuland , MD , Department of Intensive Care Medicine , Amsterdam UMC , Universiteit van Amsterdam , Amsterdam , The Netherlands , 
+ Laura van Manen , MD , Department of Intensive Care , BovenIJ Ziekenhuis , Amsterdam , The Netherlands , 
+ Leon Montenij , MD , PhD , Department of Anesthesiology , Pain Management and Intensive Care , Catharina Ziekenhuis Eindhoven , Eindhoven , The Netherlands , 
+ Jasper van Bommel , MD , PhD , Department of Intensive Care , Erasmus Medical Center , Rotterdam , The Netherlands , 
+ Roy van den Berg , Department of Intensive Care , ETZ Tilburg , Tilburg , The Netherlands , 
+ Ellen van Geest , Department of ICMT , Haga Ziekenhuis , Den Haag , The Netherlands , 
+ Anisa Hana , MD , PhD , Intensive Care , Laurentius Ziekenhuis , Roermond , The Netherlands , 
+ B. van den Bogaard , MD , PhD , ICU , OLVG , Amsterdam , The Netherlands , 
+ Prof. Peter Pickkers , Department of Intensive Care Medicine , Radboud University Medical Centre , Nijmegen , The Netherlands , 
+ Pim van der Heiden , MD , PhD , Intensive Care , Reinier de Graaf Gasthuis , Delft , The Netherlands , 
+ Claudia ( C.W. ) van Gemeren , MD , Intensive Care , Spaarne Gasthuis , Haarlem en Hoofddorp , The Netherlands , 
+ Arend Jan Meinders , MD , Department of Internal Medicine and Intensive Care , St Antonius Hospital , Nieuwegein , The Netherlands , 
+ Martha de Bruin , MD , Department of Intensive Care , Franciscus Gasthuis & Vlietland , Rotterdam , The Netherlands , 
+ Emma Rademaker , MD , MSc , Department of Intensive Care , UMC Utrecht , Utrecht , The Netherlands , 
+ Frits H.M. van Osch , PhD , Department of Clinical Epidemiology , VieCuri Medisch Centrum , Venlo , The Netherlands , 
+ Martijn de Kruif , MD , PhD , Department of Pulmonology , Zuyderland MC , Heerlen , The Netherlands , 
+ Nicolas Schroten , MD , Intensive Care , Albert Schweitzerziekenhuis , Dordrecht , The Netherlands , 
+ Klaas Sierk Arnold , MD , Anesthesiology , Antonius Ziekenhuis Sneek , Sneek , The Netherlands , 
+ J.W. Fijen , MD , PhD , Department of Intensive Care , Diakonessenhuis Hospital , Utrecht , The Netherland , 
+ Jacomar J.M. van Koesveld , MD , ICU , IJsselland Ziekenhuis , Capelle aan den IJssel , The Netherlands , 
+ Koen S. Simons , MD , PhD , Department of Intensive Care , Jeroen Bosch Ziekenhuis , Den Bosch , The Netherlands , 
+ Joost Labout , MD , PhD , ICU , Maasstad Ziekenhuis Rotterdam , The Netherlands , 
+ Bart van de Gaauw , MD , Martiniziekenhuis , Groningen , The Netherlands , 
+ Michael Kuiper , Intensive Care , Medisch Centrum Leeuwarden , Leeuwarden , The Netherlands , 
+ Albertus Beishuizen , MD , PhD , Department of Intensive Care , Medisch Spectrum Twente , Enschede , The Netherlands , 
+ Dennis Geutjes , Department of Information Technology , Slingeland Ziekenhuis , Doetinchem , The Netherlands , 
+ Johan Lutisan , MD , ICU , WZA , Assen , The Netherlands , 
+ Bart P. Grady , MD , PhD , Department of Intensive Care , Ziekenhuisgroep Twente , Almelo , The Netherlands , 
+ Remko van den Akker , Intensive Care , Adrz , Goes , The Netherlands , 
+ Sesmu Arbous , MD , PhD , Intensivist , LUMC , Leiden , The Netherlands , 
+ Tom A. Rijpstra , MD , Department of Intensive Care , Amphia Ziekenhuis , Breda , The Netherlands , 
+ Roos Renckens , MD , PhD , Department of Internal Medicine , Northwest Clinics , Alkmaar , the Netherlands , 
+ From collaborating hospitals having signed the data sharing agreement : 
+ Daniël Pretorius , MD , Department of Intensive Care Medicine , Hospital St Jansdal , Harderwijk , The Netherlands , 
+ Menno Beukema , MD , Department of Intensive Care , Streekziekenhuis Koningin Beatrix , Winterswijk , The Netherlands , 
+ Bram Simons , MD , Intensive Care , Bravis Ziekenhuis ,
+Bergen op Zoom en Roosendaal , The Netherlands , 
+ A.A. Rijkeboer , MD , ICU , Flevoziekenhuis , Almere , The Netherlands , 
+ Marcel Aries , MD , PhD , MUMC+ , University Maastricht , Maastricht , The Netherlands , 
+ Niels C. Gritters van den Oever , MD , Intensive Care , Treant Zorggroep , Emmen , The Netherlands , 
+ Martijn van Tellingen , MD , EDIC , Department of Intensive Care Medicine , afdeling Intensive Care , ziekenhuis Tjongerschans , Heerenveen , The Netherlands , 
+ Annemieke Dijkstra , MD , Department of Intensive Care Medicine , Het Van Weel - Bethesda Ziekenhuis , Dirksland , The Netherlands , 
+ Rutger van Raalte , Department of Intensive Care , Tergooi hospital , Hilversum , The Netherlands , 
+ From the Laboratory for Critical Care Computational Intelligence : 
+ Tariq A. Dam , MD , Department of Intensive Care Medicine , Laboratory for Critical Care Computational Intelligence , Amsterdam Medical Data Science , Amsterdam UMC , Vrije Universiteit , Amsterdam , The Netherlands , 
+ Martin E. Haan , MD , Department of Intensive Care Medicine , Laboratory for Critical Care Computational Intelligence , Amsterdam Medical Data Science , Amsterdam UMC , Vrije Universiteit , Amsterdam , The Netherlands , 
+ Mark Hoogendoorn , PhD , Quantitative Data Analytics Group , Department of Computer Science , Faculty of Science , VU University , Amsterdam , The Netherlands , 
+ Armand R.J. Girbes , MD , PhD , EDIC , Department of Intensive Care Medicine , Laboratory for Critical Care Computational Intelligence , Amsterdam Medical Data Science , Amsterdam UMC , Vrije Universiteit , Amsterdam , The Netherlands , 
+ Paul W.G. Elbers , MD , PhD , EDIC , Department of Intensive Care Medicine , Laboratory for Critical Care Computational Intelligence , Amsterdam Medical Data Science , Amsterdam UMC , Vrije Universiteit , Amsterdam , The Netherlands , 
+ Patrick J. Thoral , MD , EDIC , Department of Intensive Care Medicine , Laboratory for Critical Care Computational Intelligence , Amsterdam Medical Data Science , Amsterdam UMC , Vrije Universiteit , Amsterdam , The Netherlands , 
+ Dagmar M. Ouweneel , PhD , Department of Intensive Care Medicine , Laboratory for Critical Care Computational Intelligence , Amsterdam Medical Data Science , Amsterdam UMC , Vrije Universiteit , Amsterdam , The Netherlands , 
+ Ronald Driessen , Department of Intensive Care Medicine , Laboratory for Critical Care Computational Intelligence , Amsterdam Medical Data Science , Amsterdam UMC , Vrije Universiteit , Amsterdam , The Netherlands , 
+ Jan Peppink , Department of Intensive Care Medicine , Laboratory for Critical Care Computational Intelligence , Amsterdam Medical Data Science , Amsterdam UMC , Vrije Universiteit , Amsterdam , The Netherlands , 
+ H.J. de Grooth , MD , PhD , Department of Intensive Care Medicine , Laboratory for Critical Care Computational Intelligence , Amsterdam Medical Data Science , Amsterdam UMC , Vrije Universiteit , Amsterdam , The Netherlands , 
+ From Pacmed : 
+ Robbert C.A. Lalisang , MD , Pacmed , Amsterdam , The Netherlands , 
+ Michele Tonutti , MRes , Pacmed , Amsterdam , The Netherlands , 
+ Daan P. de Bruin , MSc , Pacmed , Amsterdam , The Netherlands , 
+ Sebastiaan J.J. Vonk , MSc , Pacmed , Amsterdam , The Netherlands , 
+ Mattia Fornasa , PhD , Pacmed , Amsterdam , The Netherlands , 
+ Tomas Machado , Pacmed , Amsterdam , The Netherlands , 
+ Michael de Neree tot Babberich , Pacmed , Amsterdam , The Netherlands , 
+ Olivier Thijssens , MSc , Pacmed , Amsterdam , The Netherlands , 
+ Lot Wagemakers , Pacmed , Amsterdam , The Netherlands , 
+ Hilde G.A. van der Pol , Pacmed , Amsterdam , The Netherlands , 
+ Tom Hendriks , Pacmed , Amsterdam , The Netherlands , 
+ Julie Berend , Pacmed , Amsterdam , The Netherlands , 
+ Virginia Ceni Silva , Pacmed , Amsterdam , The Netherlands , 
+ Robert F.J. Kullberg , MD , Pacmed , Amsterdam , The Netherlands , 
+ Taco Houwert , MSc , Pacmed , Amsterdam , The Netherlands , 
+ Hidde Hovenkamp , MSc , Pacmed , Amsterdam , The Netherlands , 
+ Roberto Noorduijn Londono , MSc , Pacmed , Amsterdam , The Netherlands , 
+ Davide Quintarelli , MSc , Pacmed , Amsterdam , The Netherlands , 
+ Martijn G. Scholtemeijer , MD , Pacmed , Amsterdam , The Netherlands , 
+ Aletta A. de Beer , MSc , Pacmed , Amsterdam , The Netherlands , 
+ Giovanni Cina , PhD , Pacmed , Amsterdam , The Netherlands , 
+ Willem E. Herter , BSc , Pacmed , Amsterdam , The Netherlands , 
+ Adam Izdebski , Pacmed , Amsterdam , The Netherlands , 
+ From RCCnet : 
+ Leo Heunks , MD , PhD , Department of Intensive Care Medicine , Amsterdam Medical Data Science , Amsterdam UMC , Vrije Universiteit , Amsterdam , The Netherlands , 
+ Nicole Juffermans , MD , PhD , ICU , OLVG , Amsterdam , The Netherlands , 
+ Arjen J.C. Slooter , MD , PhD , Department of Intensive Care Medicine , UMC Utrecht , Utrecht University , Utrecht , the Netherlands , 
+ From other collaborating partners : 
+ Martijn Beudel , MD , PhD , Department of Neurology , Amsterdam UMC , Universiteit van Amsterdam , Amsterdam , The Netherlands ,
+==================================================SP:3ea9e86e5755ef84d28e3163c60531ace5d62e3a==================================================
+We have presented , to the best of our knowledge , the first statistical analysis of fine - tuning - based meta - learning .
+We demonstrate the success of such algorithms under the assumption of approximately shared representations between available tasks .
+In contrast , we show that “ frozen representation ” objectives analyzed by prior work fail under this weaker assumption . 
+
+An interesting line of future work is to determine ways to formulate useful shared structure among MDPs , i.e. formulate settings for which meta - reinforcement learning succeeds and results in improved regret bounds for downstream tasks .
