@@ -502,28 +502,32 @@ def scan_issue(args, model, tokenizer, prefix="", do_test=False, do_score=True, 
     model.resize_token_embeddings(len(eval_dataset.tokenizer))
     model.eval()
 
-    # start_time = timeit.default_timer() 
     
-    # for batch in tqdm(eval_dataloader, desc=f"Extracting NER from {args.test_file}"):
     total = len(eval_dataloader)
     record_batch_path = f"_issue_files/batch/{args.output_dir}_{args.test_file[:-6]}.txt"
     record_docID_path = f"_issue_files/doc_id/{args.output_dir}_{args.test_file[:-6]}.txt"
     # issue_idx = np.array([])
+        
+    try:
+        with open(record_docID_path, 'r') as f:
+            docId_list = (f.read()).split(",") 
+        previous_docId = int(docId_list[-1])
+    except:
+        previous_docId = -99
+    
     for idx, batch in tqdm(enumerate(eval_dataloader), total=total, desc=f"Extracting NER from {args.test_file}"):        
         # if idx<820: continue 
         # if idx>830: break
-        if idx<skip[-1]-2: continue
+        if idx<=skip[-1]: continue
         if idx in skip: continue
         
-        # if idx not in skip:
-        #     continue
-        # else:
-        #     print(idx, doc_id)
-        #     issue_idx = np.append(issue_idx, doc_id)
-        #     continue
-        
         doc_id = batch[0].cpu().detach().numpy()
-        
+        if doc_id[-1]==previous_docId:
+            print(f"Repeat doc id: {doc_id[-1]} at {idx}")
+            with open(record_batch_path, 'a') as f:
+                f.write(f", {idx}")
+            continue
+                
         try:
             indexs = batch[-2]
             batch_m2s = batch[-1]
@@ -592,6 +596,7 @@ def scan_issue(args, model, tokenizer, prefix="", do_test=False, do_score=True, 
                 print(record_docID_path)
                 f.write(docId_str)
             print(f"Saved doc id: {docId_str}")
+            # torch.cuda.empty_cache()
             return
         
     # print(np.unique(issue_idx))
