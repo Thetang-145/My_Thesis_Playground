@@ -1,0 +1,216 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    python_version: 3.8.10
+    cli_version: 0.14.2
+    framework: huggingface
+    huggingface_version: 4.27.4
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1683213207.50397
+    t:
+      1:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      2:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      3:
+      - 2
+      - 7
+      - 13
+      - 23
+      4: 3.8.10
+      5: 0.14.2
+      6: 4.27.4
+      8:
+      - 5
+    m:
+    - 1: trainer/global_step
+      6:
+      - 3
+model:
+  desc: null
+  value: bart-large
+input_section:
+  desc: null
+  value: abstract
+input_type:
+  desc: null
+  value: kg
+batch_size:
+  desc: null
+  value: 8
+max_input_length:
+  desc: null
+  value: 347
+max_output_length:
+  desc: null
+  value: 512
+num_beams:
+  desc: null
+  value: 5
+learning_rate:
+  desc: null
+  value: 1.0e-05
+fp:
+  desc: null
+  value: 16
+optimizer:
+  desc: null
+  value: adam
+args/model:
+  desc: null
+  value: bart-large
+args/dataset:
+  desc: null
+  value: arXiv
+args/section:
+  desc: null
+  value: abstract
+args/inputType:
+  desc: null
+  value: kg
+args/prototype:
+  desc: null
+  value: 64
+args/max_input:
+  desc: null
+  value: 347
+args/max_output:
+  desc: null
+  value: 512
+args/bs:
+  desc: null
+  value: 8
+args/num_epoch:
+  desc: null
+  value: 5
+args/num_beams:
+  desc: null
+  value: 5
+args/lr:
+  desc: null
+  value: 1.0e-05
+args/fp:
+  desc: null
+  value: 16
+args/opt:
+  desc: null
+  value: adam
+args/saveData:
+  desc: null
+  value: false
+args/cuda:
+  desc: null
+  value: 0
+spacial_token:
+  desc: null
+  value:
+  - '[Method]'
+  - '[/Generic]'
+  - '[Material]'
+  - '[FEATURE-OF]'
+  - '[Task]'
+  - '[PART-OF]'
+  - '[/Method]'
+  - '[OtherScientificTerm]'
+  - '[/Material]'
+  - '[COMPARE]'
+  - '[/Task]'
+  - '[/OtherScientificTerm]'
+  - '[Metric]'
+  - '[USED-FOR]'
+  - '[EVALUATE-FOR]'
+  - '[HYPONYM-OF]'
+  - '[Generic]'
+  - '[CONJUNCTION]'
+  - '[/Metric]'
+train_df:
+  desc: null
+  value: '           paper_id                                          input_seq                                         target_seq
+
+    0         1405.3379  [Metric] learning rates [/Metric] [USED-FOR] [...  additive
+    models play an important role in semi...
+
+    1         0901.1147  [OtherScientificTerm] @xmath3 peak production ...  we have
+    studied the leptonic decay @xmath0 , v...
+
+    2       nlin0608019  [OtherScientificTerm] current [/OtherScientifi...  in 84
+    , 258 ( 2000 ) , mateos conjectured that...
+
+    3         0903.5449  [Method] random phase diffuser [/Method] [USED...  the effect
+    of a random phase diffuser on fluct...
+
+    4     hep-ph0605279  [OtherScientificTerm] @xmath0 - th @xmath1 - m...  with a
+    special intention of clarifying the und...
+
+    ..              ...                                                ...                                                ...
+
+    59        1210.3325  [Material] jhu turbulence database [/Material]...  the jhu
+    turbulence database @xcite can be used...
+
+    60   physics0109012  [OtherScientificTerm] surface phonons [/OtherS...  electron
+    injection from an adsorbed molecule t...
+
+    61  astro-ph9905371  [OtherScientificTerm] corona [/OtherScientific...  during
+    the past two years , the galactic black...
+
+    62        1006.3484  [OtherScientificTerm] x - ray center [/OtherSc...  recent
+    studies of lensing clusters reveal that...
+
+    63       1609.00244  [Method] linearizations of nonlinear equations...  we study
+    a family of double confluent heun equ...
+
+
+    [64 rows x 3 columns]'
+val_df:
+  desc: null
+  value: '           paper_id                                          input_seq                                         target_seq
+
+    0         0708.1996  [OtherScientificTerm] strong anchoring [/Other...    we study
+    the phase behavior of a nematic liq...
+
+    1         0709.1158  [OtherScientificTerm] scaling relations [/Othe...    determining
+    the scaling relations between ga...
+
+    2         1112.4795  [OtherScientificTerm] spatial quantum correlat...    we show
+    how to control spatial quantum corre...
+
+    3         1012.5771  [OtherScientificTerm] shock - excited environm...    class   i
+    methanol masers are believed to be...
+
+    4        1601.06075  [Material] physics publications [/Material] [C...    nowadays
+    , scientific challenges usually req...
+
+    ..              ...                                                ...                                                ...
+
+    59  astro-ph0603465  [OtherScientificTerm] local magnetic field [/O...    following
+    the detection of polarized diffuse...
+
+    60  astro-ph0101277  [Method] numerical models [/Method] [USED-FOR]...    identifying
+    the processes that determine str...
+
+    61        0901.0612  [OtherScientificTerm] polarization qubits [/Ot...    we propose
+    a fibre - based quantum key distr...
+
+    62  cond-mat9909044  [OtherScientificTerm] magnetic field [/OtherSc...    consistent
+    perturbation theory for thermodyn...
+
+    63   physics0008201  [Method] post processing procedures [/Method] ...    we present
+    numerical procedures for analyzin...
+
+
+    [64 rows x 3 columns]'

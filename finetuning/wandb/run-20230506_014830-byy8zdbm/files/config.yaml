@@ -1,0 +1,230 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    python_version: 3.8.10
+    cli_version: 0.14.2
+    framework: huggingface
+    huggingface_version: 4.27.4
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1683337710.322398
+    t:
+      1:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      2:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      3:
+      - 2
+      - 7
+      - 13
+      - 23
+      4: 3.8.10
+      5: 0.14.2
+      6: 4.27.4
+      8:
+      - 5
+    m:
+    - 1: trainer/global_step
+      6:
+      - 3
+    - 1: train_loss
+      5: 1
+      6:
+      - 1
+    - 1: epoch
+      5: 1
+      6:
+      - 1
+model:
+  desc: null
+  value: bart-large-kg
+input_section:
+  desc: null
+  value: summary
+input_type:
+  desc: null
+  value: kg
+batch_size:
+  desc: null
+  value: 8
+max_input_length:
+  desc: null
+  value: 218
+max_output_length:
+  desc: null
+  value: 512
+num_beams:
+  desc: null
+  value: 5
+learning_rate:
+  desc: null
+  value: 1.0e-05
+fp:
+  desc: null
+  value: 16
+optimizer:
+  desc: null
+  value: adam
+args/model:
+  desc: null
+  value: bart-large-kg
+args/dataset:
+  desc: null
+  value: MuP
+args/section:
+  desc: null
+  value: summary
+args/inputType:
+  desc: null
+  value: kg
+args/prototype:
+  desc: null
+  value: null
+args/max_input:
+  desc: null
+  value: 218
+args/max_output:
+  desc: null
+  value: 512
+args/bs:
+  desc: null
+  value: 8
+args/num_epoch:
+  desc: null
+  value: 5
+args/num_beams:
+  desc: null
+  value: 5
+args/lr:
+  desc: null
+  value: 1.0e-05
+args/fp:
+  desc: null
+  value: 16
+args/opt:
+  desc: null
+  value: adam
+args/saveLast:
+  desc: null
+  value: false
+args/cont:
+  desc: null
+  value: false
+args/saveData:
+  desc: null
+  value: false
+args/cuda:
+  desc: null
+  value: 0
+spacial_token:
+  desc: null
+  value:
+  - '[Metric]'
+  - '[Method]'
+  - '[/Material]'
+  - '[/Task]'
+  - '[PART-OF]'
+  - '[USED-FOR]'
+  - '[/OtherScientificTerm]'
+  - '[/Generic]'
+  - '[EVALUATE-FOR]'
+  - '[CONJUNCTION]'
+  - '[Material]'
+  - '[FEATURE-OF]'
+  - '[Task]'
+  - '[COMPARE]'
+  - '[Generic]'
+  - '[OtherScientificTerm]'
+  - '[HYPONYM-OF]'
+  - '[/Method]'
+  - '[/Metric]'
+train_df:
+  desc: null
+  value: '       index                                     paper_id                                          input_seq                                         target_seq
+
+    0          0  SP:4d08cdb2de2044bcb574a425b42963b83fbebfbc  [Method] stability
+    arguments [/Method] [USED-F...  This paper investigates kernel ridge-less regr...
+
+    1          1  SP:b80bc890180934092cde037b49d94d6e4e06fad9  [Generic] regularization
+    [/Generic] [USED-FOR]...  This paper presents a novel way of making full...
+
+    2          2  SP:09f2fe6a482bbd6f9bd2c62aa841f995171ba939  [Method] task - specific
+    representations [/Met...  This paper proposes a new framework that compu...
+
+    3          3  SP:a1e2218e6943bf138aeb359e23628676b396ed66  [Method] deep reinforcement
+    learning - based o...  This work proposes a deep reinforcement learni...
+
+    4          4  SP:43e525fb3fa611df7fd44bd3bc9843e57b154c66  [Method] VAEs [/Method]
+    [CONJUNCTION] [OtherSc...  This paper proposes 3 deep generative models b...
+
+    ...      ...                                          ...                                                ...                                                ...
+
+    51489  51489  SP:4706017e6f8b958c7d0825fed98b285ea2994b59  [OtherScientificTerm]
+    DWHT [/OtherScientificTe...  This paper presents a new pointwise convolutio...
+
+    51490  51490  SP:63ad3be1dae7ede5c02a847304072c1cbc91b1cb  [Method] Bayesian MC
+    Dropout [/Method] [USED-F...  This paper proposes to model various uncertain...
+
+    51491  51491  SP:63ad3be1dae7ede5c02a847304072c1cbc91b1cb  [Method] Bayesian MC
+    Dropout [/Method] [USED-F...  The authors proposed a Bayesian graph neural n...
+
+    51492  51492  SP:63ad3be1dae7ede5c02a847304072c1cbc91b1cb  [Task] node classification
+    tasks [/Task] [EVAL...  This paper proposes to model various uncertain...
+
+    51493  51493  SP:63ad3be1dae7ede5c02a847304072c1cbc91b1cb  [Task] node classification
+    tasks [/Task] [EVAL...  The authors proposed a Bayesian graph neural n...
+
+
+    [51485 rows x 4 columns]'
+val_df:
+  desc: null
+  value: '       index                                     paper_id                                          input_seq                                         target_seq
+
+    0          0  SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  [OtherScientificTerm]
+    local differential priva...  This paper studies FL under local differential...
+
+    1          1  SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  [OtherScientificTerm]
+    local differential priva...  This paper studies a low communication algorit...
+
+    2          2  SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  [OtherScientificTerm]
+    local differential priva...  The paper proposed a differentially private tr...
+
+    3          3  SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  [Method] randomized
+    rotation [/Method] [USED-F...  This paper studies FL under local differential...
+
+    4          4  SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  [Method] randomized
+    rotation [/Method] [USED-F...  This paper studies a low communication algorit...
+
+    ...      ...                                          ...                                                ...                                                ...
+
+    13099  13099  SP:3058e6bc5e8c62af325c214c9e1436d6cdf09204  [OtherScientificTerm]
+    non - Euclidean spaces [...  The authors propose using non-Euclidean spaces...
+
+    13100  13100  SP:3058e6bc5e8c62af325c214c9e1436d6cdf09204  [OtherScientificTerm]
+    non - Euclidean spaces [...  In this paper, the authors address representat...
+
+    13101  13101  SP:3058e6bc5e8c62af325c214c9e1436d6cdf09204  [Method] closed - form
+    formulae [/Method] [USE...  This paper builds a new graph convolutional ne...
+
+    13102  13102  SP:3058e6bc5e8c62af325c214c9e1436d6cdf09204  [Method] closed - form
+    formulae [/Method] [USE...  The authors propose using non-Euclidean spaces...
+
+    13103  13103  SP:3058e6bc5e8c62af325c214c9e1436d6cdf09204  [Method] closed - form
+    formulae [/Method] [USE...  In this paper, the authors address representat...
+
+
+    [13104 rows x 4 columns]'

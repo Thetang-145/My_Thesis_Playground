@@ -12,7 +12,10 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 from transformers import BartForConditionalGeneration, BartTokenizer
 from transformers import AutoTokenizer, AutoModel
-from rouge import Rouge
+from lion_pytorch import Lion
+
+# from rouge import Rouge
+from rouge_score import rouge_scorer
 
 from pytorch_lightning import LightningModule, LightningDataModule, Trainer
 
@@ -20,24 +23,38 @@ from pytorch_lightning import LightningModule, LightningDataModule, Trainer
 MODELS = {
     "bart-large": "facebook/bart-large",
     "bart-large-cnn": "facebook/bart-large-cnn",
-    "led-base": "allenai/longformer-base-4096"
+    "bart-large-kg": "facebook/bart-large",
 }
 
+def get_rouge(refs, hyps):
+    metrics = ['rouge1', 'rouge2', 'rougeL']
+    scorer = rouge_scorer.RougeScorer(metrics, use_stemmer=True)
+    
+    if len(refs)!=len(hyps):
+        raise Exception(f"No. of Refs and Hyps are not equal")
+    results = {}
+    for metric in metrics: results[metric]=[] 
+    for idx in range(len(refs)):
+        scores = scorer.score(refs[idx].strip(), hyps[idx].strip())
+        for metric in metrics: results[metric].append(scores[metric].fmeasure)
+    results = {rouge_metric: np.average(rouge_metric_scores) for (rouge_metric, rouge_metric_scores) in results.items()}
+    return results
+
 class MyDataset(Dataset):
-    def __init__(self, args, data, tokenizer):
+    def __init__(self, args, data, tokenizer, max_input):
         self.data = data
         self.paper_id= list(data['paper_id'])
         self.input = list(data['input_seq'])
         self.target = list(data['target_seq'])
         self.tokenizer = tokenizer
-        self.max_input_length = args.max_input_length
-        self.max_output_length = args.max_output_length
+        self.max_input = max_input
+        self.max_output = args.max_output
 
     def __getitem__(self, index):
         input_tokens = self.tokenizer.encode(
             self.input[index], 
             padding='max_length', 
-            max_length=self.max_input_length, 
+            max_length=self.max_input, 
             truncation=True, 
             return_attention_mask=True,
             add_special_tokens=True,
@@ -46,7 +63,7 @@ class MyDataset(Dataset):
         target_tokens = self.tokenizer.encode(
             self.target[index], 
             padding='max_length', 
-            max_length=self.max_input_length, 
+            max_length=self.max_input, 
             truncation=True, 
             return_attention_mask=True,
             add_special_tokens=True,
@@ -77,43 +94,52 @@ class DataModule(LightningDataModule):
         self.val_df = val_df
         self.args = args
         self.tokenizer = BartTokenizer.from_pretrained(MODELS[args.model])
+        self.save_hyperparameters()
         
     def setup(self, stage=None):
         self.train_dataset = MyDataset(
-            self.args,
-            self.train_df,
-            self.tokenizer
+            args = self.args,
+            data = self.train_df,
+            tokenizer = self.tokenizer,
+            max_input = self.args.max_input
         )
         self.val_dataset = MyDataset(
-            self.args,
-            self.val_df,
-            self.tokenizer
+            args = self.args,
+            data = self.val_df,
+            tokenizer = self.tokenizer,
+            max_input = self.args.max_input
         )
         
     def train_dataloader(self):
         return DataLoader(
             self.train_dataset,
-            batch_size=self.args.batch_size,
+            batch_size=self.args.bs,
             shuffle=True
         )
             
     def val_dataloader(self):
         return DataLoader(
             self.val_dataset,
-            batch_size=self.args.batch_size,
+            batch_size=self.args.bs,
             shuffle=False
         )
-
+    
 class BartModel(LightningModule):
-    def __init__(self, args: argparse.Namespace):
+    def __init__(self, args: argparse.Namespace, spacial_token=None):
         super().__init__()
-        self.model = BartForConditionalGeneration.from_pretrained(MODELS[args.model])
+        self.save_hyperparameters()
         self.tokenizer = BartTokenizer.from_pretrained(MODELS[args.model])
+        # print(len(self.tokenizer))
         self.args = args
+        self.tokenizer.add_tokens(spacial_token)
+        # print(len(self.tokenizer))
+        self.model = BartForConditionalGeneration.from_pretrained(MODELS[args.model])
         self.model.resize_token_embeddings(len(self.tokenizer))
+        # print(self.model.get_input_embeddings())
 
         
     def forward(self, input_ids, attention_mask, target_ids, target_attention_mask):
+        # self.model.resize_token_embeddings(len(self.tokenizer))
         output = self.model(
             input_ids,
             attention_mask=attention_mask,
@@ -149,16 +175,30 @@ class BartModel(LightningModule):
             max_length=self.tokenizer.model_max_length, 
             num_beams=self.args.num_beams
         )
-        
         hyps = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in generated_ids]
         refs = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in target_ids]
-        scores = Rouge().get_scores(hyps, refs, avg=True)
-        
-        self.log("rouge_1", scores['rouge-1']['f'], prog_bar=True, logger=True)
-        self.log("rouge_2", scores['rouge-2']['f'], prog_bar=True, logger=True)
-        self.log("rouge_l", scores['rouge-l']['f'], prog_bar=True, logger=True)
+        scores = get_rouge(refs, hyps) 
+        for metric, score in scores.items():
+            self.log(metric, score, prog_bar=True, logger=True)
         return scores
+    
+    def predict_step(self, batch, batch_idx):
+        input_ids = batch['input_ids']
+        attention_mask = batch['input_attention_mask']
+        generated_ids = self.model.generate(
+            input_ids=input_ids, 
+            attention_mask=attention_mask, 
+            max_length=self.tokenizer.model_max_length, 
+            num_beams=self.args.num_beams
+        )
+        generated_seq = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in generated_ids]
+
+        return batch['paper_id'], generated_seq
     
     
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.model.parameters(), lr=self.args.learning_rate)
+        OPTIMIZERS = {
+            "adam": torch.optim.AdamW(self.model.parameters(), lr=self.args.lr),
+            "lion": Lion(self.model.parameters(), lr=self.args.lr)
+        }
+        return OPTIMIZERS[self.args.opt]

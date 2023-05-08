@@ -1,0 +1,156 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    python_version: 3.8.10
+    cli_version: 0.14.2
+    framework: huggingface
+    huggingface_version: 4.27.4
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1683204610.607901
+    t:
+      1:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      2:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      3:
+      - 2
+      - 7
+      - 13
+      - 23
+      4: 3.8.10
+      5: 0.14.2
+      6: 4.27.4
+      8:
+      - 5
+    m:
+    - 1: trainer/global_step
+      6:
+      - 3
+    - 1: rouge1
+      5: 1
+      6:
+      - 1
+    - 1: rouge2
+      5: 1
+      6:
+      - 1
+    - 1: rougeL
+      5: 1
+      6:
+      - 1
+    - 1: epoch
+      5: 1
+      6:
+      - 1
+model:
+  desc: null
+  value: bart-large
+input_section:
+  desc: null
+  value: abstract
+input_type:
+  desc: null
+  value: kg
+batch_size:
+  desc: null
+  value: 8
+max_input_length:
+  desc: null
+  value: 295
+max_output_length:
+  desc: null
+  value: 512
+num_beams:
+  desc: null
+  value: 5
+learning_rate:
+  desc: null
+  value: 1.0e-05
+fp:
+  desc: null
+  value: 16
+optimizer:
+  desc: null
+  value: adam
+args/model:
+  desc: null
+  value: bart-large
+args/dataset:
+  desc: null
+  value: arXiv
+args/section:
+  desc: null
+  value: abstract
+args/inputType:
+  desc: null
+  value: kg
+args/prototype:
+  desc: null
+  value: 64
+args/max_input:
+  desc: null
+  value: 295
+args/max_output:
+  desc: null
+  value: 512
+args/bs:
+  desc: null
+  value: 8
+args/num_epoch:
+  desc: null
+  value: 1
+args/num_beams:
+  desc: null
+  value: 5
+args/lr:
+  desc: null
+  value: 1.0e-05
+args/fp:
+  desc: null
+  value: 16
+args/opt:
+  desc: null
+  value: adam
+args/saveData:
+  desc: null
+  value: false
+args/cuda:
+  desc: null
+  value: 0
+spacial_token:
+  desc: null
+  value:
+  - '[HYPONYM-OF]'
+  - '[CONJUNCTION]'
+  - '[/Generic]'
+  - '[/OtherScientificTerm]'
+  - '[OtherScientificTerm]'
+  - '[/Material]'
+  - '[USED-FOR]'
+  - '[Metric]'
+  - '[FEATURE-OF]'
+  - '[Generic]'
+  - '[COMPARE]'
+  - '[Method]'
+  - '[Material]'
+  - '[/Task]'
+  - '[PART-OF]'
+  - '[EVALUATE-FOR]'
+  - '[/Metric]'
+  - '[Task]'
+  - '[/Method]'

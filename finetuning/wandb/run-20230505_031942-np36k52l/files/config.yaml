@@ -1,0 +1,218 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    python_version: 3.8.10
+    cli_version: 0.14.2
+    framework: huggingface
+    huggingface_version: 4.27.4
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1683256782.948166
+    t:
+      1:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      2:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      3:
+      - 7
+      - 13
+      - 23
+      4: 3.8.10
+      5: 0.14.2
+      6: 4.27.4
+      8:
+      - 5
+    m:
+    - 1: trainer/global_step
+      6:
+      - 3
+model:
+  desc: null
+  value: bart-large-kg
+input_section:
+  desc: null
+  value: abstract
+input_type:
+  desc: null
+  value: kg
+batch_size:
+  desc: null
+  value: 8
+max_input_length:
+  desc: null
+  value: 340
+max_output_length:
+  desc: null
+  value: 512
+num_beams:
+  desc: null
+  value: 5
+learning_rate:
+  desc: null
+  value: 1.0e-05
+fp:
+  desc: null
+  value: 16
+optimizer:
+  desc: null
+  value: adam
+args/model:
+  desc: null
+  value: bart-large-kg
+args/dataset:
+  desc: null
+  value: MuP
+args/section:
+  desc: null
+  value: abstract
+args/inputType:
+  desc: null
+  value: kg
+args/prototype:
+  desc: null
+  value: 64
+args/max_input:
+  desc: null
+  value: 340
+args/max_output:
+  desc: null
+  value: 512
+args/bs:
+  desc: null
+  value: 8
+args/num_epoch:
+  desc: null
+  value: 5
+args/num_beams:
+  desc: null
+  value: 5
+args/lr:
+  desc: null
+  value: 1.0e-05
+args/fp:
+  desc: null
+  value: 16
+args/opt:
+  desc: null
+  value: adam
+args/cont:
+  desc: null
+  value: false
+args/saveData:
+  desc: null
+  value: false
+args/cuda:
+  desc: null
+  value: 0
+spacial_token:
+  desc: null
+  value:
+  - '[/Task]'
+  - '[/Metric]'
+  - '[/Method]'
+  - '[Metric]'
+  - '[/Material]'
+  - '[HYPONYM-OF]'
+  - '[/OtherScientificTerm]'
+  - '[EVALUATE-FOR]'
+  - '[/Generic]'
+  - '[CONJUNCTION]'
+  - '[Task]'
+  - '[PART-OF]'
+  - '[Generic]'
+  - '[Material]'
+  - '[Method]'
+  - '[FEATURE-OF]'
+  - '[OtherScientificTerm]'
+  - '[USED-FOR]'
+  - '[COMPARE]'
+train_df:
+  desc: null
+  value: '    index                                     paper_id                                          input_seq                                         target_seq
+
+    0       0  SP:4d08cdb2de2044bcb574a425b42963b83fbebfbc  [Metric] average CVloo
+    stability [/Metric] [FE...  This paper investigates kernel ridge-less regr...
+
+    1       1  SP:b80bc890180934092cde037b49d94d6e4e06fad9  [OtherScientificTerm]
+    episodic memories [/Othe...  This paper presents a novel way of making full...
+
+    2       2  SP:09f2fe6a482bbd6f9bd2c62aa841f995171ba939  [Generic] model [/Generic]
+    [USED-FOR] [Generic...  This paper proposes a new framework that compu...
+
+    3       3  SP:a1e2218e6943bf138aeb359e23628676b396ed66  [Method] DDP [/Method]
+    [CONJUNCTION] [Method] ...  This work proposes a deep reinforcement learni...
+
+    4       4  SP:43e525fb3fa611df7fd44bd3bc9843e57b154c66  [Method] graph - based
+    deep generative modelin...  This paper proposes 3 deep generative models b...
+
+    ..    ...                                          ...                                                ...                                                ...
+
+    59     59  SP:b7532fd6e281d88fff5a0a89c73ae3e6651f8827  [OtherScientificTerm]
+    correntropy induced metr...  This paper presents an approach to deep subspa...
+
+    60     60  SP:f0e0d909df518f25eb9243837939225d7db1196e  [Generic] approaches [/Generic]
+    [USED-FOR] [Ta...  The authors present a new Algorithm for perfor...
+
+    61     61  SP:7c44bf5a4a8d5e5ee1e86ee4582c42186e2df72c  [Method] transition kernel
+    [/Method] [PART-OF]...  The paper proposes a generative method for 3D ...
+
+    62     62  SP:9326f169cc5e8d2f4268dcf39af31590ee004d98  [Method] decentralized
+    actor - critic algorith...  This paper extends the results for actor-criti...
+
+    63     63  SP:cc282126b689c7311c3a28f0d173a004ed24382f  [OtherScientificTerm]
+    cross - entropy [/OtherS...  The paper proposes a new training objective fo...
+
+
+    [64 rows x 4 columns]'
+val_df:
+  desc: null
+  value: '    index                                     paper_id                                          input_seq                                         target_seq
+
+    0       0  SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  [Metric] training performance
+    [/Metric] [CONJU...  This paper studies FL under local differential...
+
+    1       1  SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  [Metric] training performance
+    [/Metric] [CONJU...  This paper studies a low communication algorit...
+
+    2       2  SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  [Metric] training performance
+    [/Metric] [CONJU...  The paper proposed a differentially private tr...
+
+    3       3  SP:632666b52c7c551d67fbbe70c06ed589c3a5e187  [Generic] it [/Generic]
+    [USED-FOR] [Task] lang...  This submission works on the neural machine tr...
+
+    4       4  SP:632666b52c7c551d67fbbe70c06ed589c3a5e187  [Generic] it [/Generic]
+    [USED-FOR] [Task] lang...  This paper proposes a method to introduce **pr...
+
+    ..    ...                                          ...                                                ...                                                ...
+
+    59     59  SP:b0fa24ad48e7e60d6899bd799adcd03473cadd6e  [Generic] network [/Generic]
+    [USED-FOR] [Gener...  The paper considers learning Boolean functions...
+
+    60     60  SP:6e600bedbf995375fd41cc0b517ddefb918318af  [OtherScientificTerm]
+    graph structure [/OtherS...  This work presents a strategy for improving ex...
+
+    61     61  SP:6e600bedbf995375fd41cc0b517ddefb918318af  [OtherScientificTerm]
+    graph structure [/OtherS...  This paper proposes a new framework, GSRL, to ...
+
+    62     62  SP:6e600bedbf995375fd41cc0b517ddefb918318af  [OtherScientificTerm]
+    graph structure [/OtherS...  This paper introduces Graph Structured Reinfor...
+
+    63     63  SP:80c62de18a6a7433c9728fe0d731f733bb89e898  [Method] Prioritized Level
+    Replay [/Method] [H...  This paper concerns about the use of experienc...
+
+
+    [64 rows x 4 columns]'
