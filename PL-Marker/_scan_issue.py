@@ -528,6 +528,28 @@ def scan_issue(args, model, tokenizer, prefix="", do_test=False, do_score=True, 
                 f.write(f", {idx}")
             continue
                 
+        # For write doc_id from scanned batch
+        # if idx in skip:
+        #     try:
+        #         with open(record_docID_path, 'r') as f:
+        #             docId_list = (f.read()).split(",") 
+        #         docId_array = np.array([int(docId) for docId in docId_list])
+        #     except:
+        #         docId_array = np.array([])
+        #     print(f"Previous doc id: {docId_array}")
+        #     # Merge doc_id
+        #     print(f"New doc id: {doc_id}")
+        #     docId_array = np.unique(np.append(docId_array, doc_id))
+        #     docId_str = ", ".join([str(int(docId)) for docId in docId_array])
+        #     # Merge and write doc_id
+        #     with open(record_docID_path, 'w') as f:
+        #         print(record_docID_path)
+        #         f.write(docId_str)
+        #     print(f"Saved doc id: {docId_str}")
+        #     continue
+        # else:
+        #     continue
+            
         try:
             indexs = batch[-2]
             batch_m2s = batch[-1]
