@@ -1,0 +1,40 @@
+args: !!python/object:argparse.Namespace
+  bs: 8
+  cluster: KNN-k3
+  cont: false
+  cuda: 0
+  dataset: MuP
+  fp: 16
+  genSum: val
+  inputType: kg
+  lr: 1.0e-05
+  max_input: 1024
+  max_output: 512
+  model: bart-large-kg
+  num_beams: 5
+  num_epoch: 5
+  opt: adam
+  prototype: null
+  saveData: false
+  saveLast: false
+  section: abstract+conclusion
+spacial_token:
+- '[Task]'
+- '[/Task]'
+- '[Method]'
+- '[/Method]'
+- '[Metric]'
+- '[/Metric]'
+- '[Material]'
+- '[/Material]'
+- '[OtherScientificTerm]'
+- '[/OtherScientificTerm]'
+- '[Generic]'
+- '[/Generic]'
+- '[FEATURE-OF]'
+- '[PART-OF]'
+- '[USED-FOR]'
+- '[EVALUATE-FOR]'
+- '[HYPONYM-OF]'
+- '[COMPARE]'
+- '[CONJUNCTION]'

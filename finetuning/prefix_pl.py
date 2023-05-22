@@ -11,6 +11,8 @@ from common.data_importer import prepro_KGData, prepro_textData
 from common.t5_model import DataModule, T5Model, MyDataset
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
+from lightning_transformers.plugins.checkpoint import HFSaveCheckpoint
+
 from datasets import load_metric
 from torch.utils.data import DataLoader
 
@@ -19,6 +21,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from peft import PrefixTuningConfig, TaskType
 
 print("DOWNLOADING TOKENIZER")
 model_name_or_path = "t5-large"
@@ -52,7 +55,7 @@ def main():
     parser.add_argument('--section', default='abstract' , type=str, help="section to gen summary")
     parser.add_argument('--inputType', default='text' , type=str, help="input types: kg, text")
     parser.add_argument('--prototype', type=int, help="number of data for prototype run")
-    parser.add_argument("--genSum", type=str, help="Generated summary from the val, test, etc dataset")    
+    parser.add_argument("--genSum", type=str, help="Generated summary from the val, test, etc dataset")
     # Hyper-parameter
     parser.add_argument('--skip_null', action='store_true', help="skip null section")
     parser.add_argument('--max_input', type=int, help="max input token")
@@ -145,13 +148,9 @@ def main():
 
 
     exp_name = f'{args.model}_{args.section}_{args.inputType}{prototype}'
-    if args.genSum!=None:
-        exp_name = f'{args.model}_{args.section}_{args.inputType}'
-        ckpt_path = f"checkpoints/{exp_name}.ckpt"        
-        print("LOAD MODEL FOR TESTING")
-        model = T5Model.load_from_checkpoint(ckpt_path, args=args, spacial_token=spacial_token)
-    else:
-        model = T5Model(args, spacial_token=spacial_token)
+
+    peft_config = PrefixTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, inference_mode=False, num_virtual_tokens=20)
+    model = T5Model(args, spacial_token=spacial_token, peft_config=peft_config)
     print(f"Tokenizer length: {len(model.tokenizer)}")
     print(f"Model emb: {(model.model.get_input_embeddings())}")
     
@@ -218,7 +217,8 @@ def main():
         if args.prototype == None:
             trainer = Trainer(
                 logger=wandb_logger,
-                callbacks=[checkpoint_callback],        
+                callbacks=[checkpoint_callback],
+                plugins=HFSaveCheckpoint(model=model),
                 max_epochs=args.num_epoch,
                 # val_check_interval=1,
                 devices=[0], 

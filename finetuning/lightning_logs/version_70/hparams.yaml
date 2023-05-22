@@ -1,0 +1,22 @@
+args: !!python/object:argparse.Namespace
+  bs: 16
+  c_alg: kmeans-k3
+  cluster: null
+  cont: false
+  cuda: 0
+  dataset: MuP
+  fp: 16
+  genSum: test
+  inputType: text
+  lr: 1.0e-05
+  max_input: 1024
+  max_output: 512
+  model: bart-large-cnn
+  num_beams: 5
+  num_epoch: 5
+  opt: adam
+  prototype: null
+  saveData: false
+  saveLast: false
+  section: abstract
+spacial_token: null

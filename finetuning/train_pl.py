@@ -11,7 +11,6 @@ from common.data_importer import prepro_KGData, prepro_textData
 from common.finetune_pl_2 import DataModule, BartModel, MyDataset
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
-from datasets import load_metric
 from torch.utils.data import DataLoader
 
 import wandb

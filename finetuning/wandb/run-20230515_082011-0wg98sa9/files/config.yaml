@@ -1,0 +1,184 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    python_version: 3.8.10
+    cli_version: 0.14.2
+    framework: huggingface
+    huggingface_version: 4.27.4
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1684138811.506794
+    t:
+      1:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      - 71
+      2:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      - 71
+      3:
+      - 2
+      - 7
+      - 13
+      - 23
+      4: 3.8.10
+      5: 0.14.2
+      6: 4.27.4
+      8:
+      - 5
+    m:
+    - 1: trainer/global_step
+      6:
+      - 3
+args/model:
+  desc: null
+  value: t5-large
+args/dataset:
+  desc: null
+  value: MuP
+args/section:
+  desc: null
+  value: abstract
+args/inputType:
+  desc: null
+  value: text
+args/prototype:
+  desc: null
+  value: null
+args/genSum:
+  desc: null
+  value: null
+args/skip_null:
+  desc: null
+  value: false
+args/max_input:
+  desc: null
+  value: 384
+args/max_output:
+  desc: null
+  value: 512
+args/bs:
+  desc: null
+  value: 8
+args/num_epoch:
+  desc: null
+  value: 5
+args/num_beams:
+  desc: null
+  value: 3
+args/lr:
+  desc: null
+  value: 1.0e-05
+args/fp:
+  desc: null
+  value: 16
+args/opt:
+  desc: null
+  value: adam
+args/saveLast:
+  desc: null
+  value: false
+args/cont:
+  desc: null
+  value: false
+args/saveData:
+  desc: null
+  value: false
+args/cuda:
+  desc: null
+  value: 0
+spacial_token:
+  desc: null
+  value: null
+peft_config:
+  desc: null
+  value: null
+train_df:
+  desc: null
+  value: '                                          paper_id  ...                                         target_seq
+
+    0      SP:4d08cdb2de2044bcb574a425b42963b83fbebfbc  ...  This paper investigates
+    kernel ridge-less regr...
+
+    1      SP:b80bc890180934092cde037b49d94d6e4e06fad9  ...  This paper presents a
+    novel way of making full...
+
+    2      SP:09f2fe6a482bbd6f9bd2c62aa841f995171ba939  ...  This paper proposes a
+    new framework that compu...
+
+    3      SP:a1e2218e6943bf138aeb359e23628676b396ed66  ...  This work proposes a
+    deep reinforcement learni...
+
+    4      SP:43e525fb3fa611df7fd44bd3bc9843e57b154c66  ...  This paper proposes 3
+    deep generative models b...
+
+    ...                                            ...  ...                                                ...
+
+    18929  SP:0d872fb4321f3a4a3fc61cf4d33b0c7e33f2d695  ...  This paper presents a
+    RNN-RL based method for ...
+
+    18930  SP:4706017e6f8b958c7d0825fed98b285ea2994b59  ...  This paper proposes a
+    new pointwise convolutio...
+
+    18931  SP:4706017e6f8b958c7d0825fed98b285ea2994b59  ...  This paper presents a
+    new pointwise convolutio...
+
+    18932  SP:63ad3be1dae7ede5c02a847304072c1cbc91b1cb  ...  This paper proposes to
+    model various uncertain...
+
+    18933  SP:63ad3be1dae7ede5c02a847304072c1cbc91b1cb  ...  The authors proposed
+    a Bayesian graph neural n...
+
+
+    [18931 rows x 3 columns]'
+val_df:
+  desc: null
+  value: '                                         paper_id  ...                                         target_seq
+
+    0     SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  ...  This paper studies FL
+    under local differential...
+
+    1     SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  ...  This paper studies a low
+    communication algorit...
+
+    2     SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  ...  The paper proposed a differentially
+    private tr...
+
+    3     SP:632666b52c7c551d67fbbe70c06ed589c3a5e187  ...  This submission works
+    on the neural machine tr...
+
+    4     SP:632666b52c7c551d67fbbe70c06ed589c3a5e187  ...  This paper proposes a
+    method to introduce **pr...
+
+    ...                                           ...  ...                                                ...
+
+    3599  SP:18aaba3423e81e9437b509d1a5e24836ef5635f6  ...  This paper defines a set
+    of learnable basis fu...
+
+    3600  SP:18aaba3423e81e9437b509d1a5e24836ef5635f6  ...  A typical Wavelet Transform
+    is built through t...
+
+    3601  SP:3058e6bc5e8c62af325c214c9e1436d6cdf09204  ...  This paper builds a new
+    graph convolutional ne...
+
+    3602  SP:3058e6bc5e8c62af325c214c9e1436d6cdf09204  ...  The authors propose using
+    non-Euclidean spaces...
+
+    3603  SP:3058e6bc5e8c62af325c214c9e1436d6cdf09204  ...  In this paper, the authors
+    address representat...
+
+
+    [3604 rows x 3 columns]'

@@ -1,0 +1,328 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    python_version: 3.8.10
+    cli_version: 0.14.2
+    framework: huggingface
+    huggingface_version: 4.27.4
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1684138964.055765
+    t:
+      1:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      - 71
+      2:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      - 71
+      3:
+      - 2
+      - 7
+      - 13
+      - 23
+      4: 3.8.10
+      5: 0.14.2
+      6: 4.27.4
+      8:
+      - 5
+    m:
+    - 1: trainer/global_step
+      6:
+      - 3
+    - 1: rouge1
+      5: 1
+      6:
+      - 1
+    - 1: rouge2
+      5: 1
+      6:
+      - 1
+    - 1: rougeL
+      5: 1
+      6:
+      - 1
+    - 1: epoch
+      5: 1
+      6:
+      - 1
+args/model:
+  desc: null
+  value: t5-large
+args/dataset:
+  desc: null
+  value: MuP
+args/section:
+  desc: null
+  value: abstract
+args/inputType:
+  desc: null
+  value: text
+args/prototype:
+  desc: null
+  value: 32
+args/genSum:
+  desc: null
+  value: null
+args/skip_null:
+  desc: null
+  value: false
+args/max_input:
+  desc: null
+  value: 391
+args/max_output:
+  desc: null
+  value: 512
+args/bs:
+  desc: null
+  value: 8
+args/num_epoch:
+  desc: null
+  value: 5
+args/num_beams:
+  desc: null
+  value: 3
+args/lr:
+  desc: null
+  value: 1.0e-05
+args/fp:
+  desc: null
+  value: 16
+args/opt:
+  desc: null
+  value: adam
+args/saveLast:
+  desc: null
+  value: false
+args/cont:
+  desc: null
+  value: false
+args/saveData:
+  desc: null
+  value: false
+args/cuda:
+  desc: null
+  value: 0
+spacial_token:
+  desc: null
+  value: null
+peft_config:
+  desc: null
+  value: null
+train_df:
+  desc: null
+  value: '                                       paper_id  ...                                         target_seq
+
+    0   SP:4d08cdb2de2044bcb574a425b42963b83fbebfbc  ...  This paper investigates
+    kernel ridge-less regr...
+
+    1   SP:b80bc890180934092cde037b49d94d6e4e06fad9  ...  This paper presents a novel
+    way of making full...
+
+    2   SP:09f2fe6a482bbd6f9bd2c62aa841f995171ba939  ...  This paper proposes a new
+    framework that compu...
+
+    3   SP:a1e2218e6943bf138aeb359e23628676b396ed66  ...  This work proposes a deep
+    reinforcement learni...
+
+    4   SP:43e525fb3fa611df7fd44bd3bc9843e57b154c66  ...  This paper proposes 3 deep
+    generative models b...
+
+    5   SP:0bd749fe44c37b521bd40f701e1428890aaa9c95  ...  This paper presents a benchmark
+    for discourse ...
+
+    6   SP:b2fc6ca65add04fb32bcf7622d9098de9004ca2b  ...  The authors present a framework
+    that uses a co...
+
+    7   SP:7fb11c941e8d79248ce5ff7caa0535a466303395  ...  This paper proposes a method
+    of learning ensem...
+
+    8   SP:5561773ab024b083be4e362db079e371abf79653  ...  The paper proposed a new
+    training framework, n...
+
+    9   SP:9f70871f0111b58783f731748d8750c635998f32  ...  This paper presents an approach
+    to learn goal ...
+
+    10  SP:038a1d3066f8273977337262e975d7a7aab5002f  ...  The paper introduces a theoretical
+    framework f...
+
+    11  SP:40cba7b6c04d7e44709baed351382c27fa89a129  ...  The authors perform a descriptive
+    analysis of ...
+
+    12  SP:1ee00313e354c4594bbf6cf8bdbe33e3ec8df62f  ...  This paper proposes searching
+    for an architect...
+
+    13  SP:eea3b3ec32cce61d6b6df8574cf7ce9376f2230a  ...  The paper proposes a defense
+    that works by add...
+
+    14  SP:8badc3f75194e9780063af5a2f26448e41e733d4  ...  The technique is described
+    in sufficient detai...
+
+    15  SP:bbaedd5d8e7591fa3a5587260bf19f3d05779976  ...  The paper proposes a model
+    for *variable selec...
+
+    16  SP:a20769de2c7acf390c7e3bece904a17df6a991bd  ...  The work examines properties
+    of Neural Process...
+
+    17  SP:ba25b5b02701e01998e9dd22e4230c4e095f4542  ...  The paper deals with the
+    problem of credit ass...
+
+    18  SP:37bdb147b866b9e32a94d55dae82d7a42cea8da9  ...  This paper addresses the
+    problem of vertex cla...
+
+    19  SP:f19be0fdce321827638f91d57607ba340b1c3e4b  ...  The main objective of this
+    paper is to reduce ...
+
+    20  SP:5751b2abad772e44e69e125a769f25892c2a2e30  ...  This paper proposes Adversarial
+    Feature Desens...
+
+    21  SP:95ba9ad102adafaabf9671737e6549728d104629  ...  This paper derives various
+    types of graph embe...
+
+    22  SP:7327dc440b5c193c1dda156276860f89594721fa  ...  This paper explores the
+    problem of generalizin...
+
+    23  SP:5be9a3c39234c10c226c42eec95e29cbddbaf8c0  ...  This paper presents a unified
+    framework for gr...
+
+    24  SP:dd2a50abff85d2b52b02dfe27cd42e443ea265cf  ...  This article proposes a
+    benchmark of off-polic...
+
+    25  SP:1037f94ce6eae4a42ea7913c76007f5f3c26aeaf  ...  This paper proposes Triple-Search
+    (TRIPS), a d...
+
+    26  SP:d850572819200f79545616fc92e789ce958b30d4  ...  This paper deals with continual
+    learning. Spec...
+
+    27  SP:a692e1e43991839e08a02e9122757224e1582cfd  ...  Given one image, the paper
+    first generates dif...
+
+    28  SP:a24603a5dbc07070aeba98e1206511799111bec6  ...  This paper studies the potential
+    bias in deep ...
+
+    29  SP:cf6c9061542bf9c43a968faa574ce03ad71a859a  ...  The authors present an approach
+    for testing ca...
+
+    30  SP:becb496310e88c1e2e7d03131093b9ebcf075c1d  ...  The authors consider the
+    problem of learning a...
+
+    31  SP:7611ee6b9dfabf7ec6a65da58cb6e3892705e1c9  ...  This paper introduces a
+    new method for leverag...
+
+
+    [32 rows x 3 columns]'
+val_df:
+  desc: null
+  value: '                                       paper_id  ...                                         target_seq
+
+    0   SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  ...  This paper studies FL under
+    local differential...
+
+    1   SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  ...  This paper studies a low
+    communication algorit...
+
+    2   SP:7f4b788b00a2a10bcd60351c3e04c8f597101e96  ...  The paper proposed a differentially
+    private tr...
+
+    3   SP:632666b52c7c551d67fbbe70c06ed589c3a5e187  ...  This submission works on
+    the neural machine tr...
+
+    4   SP:632666b52c7c551d67fbbe70c06ed589c3a5e187  ...  This paper proposes a method
+    to introduce **pr...
+
+    5   SP:632666b52c7c551d67fbbe70c06ed589c3a5e187  ...  This paper presents a method
+    for introducing p...
+
+    6   SP:e3e728837f26acb9da283a42c219b6c3b3e131cb  ...  This paper proposes the
+    game-theoretic model o...
+
+    7   SP:e3e728837f26acb9da283a42c219b6c3b3e131cb  ...  This paper studies the problem
+    of learning how...
+
+    8   SP:e3e728837f26acb9da283a42c219b6c3b3e131cb  ...  This paper introduces a
+    Bayesian Stackelberg M...
+
+    9   SP:97911e02bf06b34d022e7548beb5169a1d825903  ...  This paper proposes a simple
+    and effective tec...
+
+    10  SP:97911e02bf06b34d022e7548beb5169a1d825903  ...  The authors introduce a
+    novel VAE-based approa...
+
+    11  SP:97911e02bf06b34d022e7548beb5169a1d825903  ...  This submission proposes
+    an ensemble framework...
+
+    12  SP:59f9de3ebe4a04d2fc8778d8e3415bf85efb7822  ...  The paper proposes an efficient
+    way to automat...
+
+    13  SP:59f9de3ebe4a04d2fc8778d8e3415bf85efb7822  ...  The problem that the authors
+    attempt to solve ...
+
+    14  SP:59f9de3ebe4a04d2fc8778d8e3415bf85efb7822  ...  This paper presents a very
+    interesting idea of...
+
+    15  SP:0f74dff929a4908405ebfa8e60fe1860eec6364f  ...  the paper investigates what
+    neural networks le...
+
+    16  SP:0f74dff929a4908405ebfa8e60fe1860eec6364f  ...  This work analyzes the effect
+    of gradient desc...
+
+    17  SP:0f74dff929a4908405ebfa8e60fe1860eec6364f  ...  This paper addresses the
+    effects of gradient d...
+
+    18  SP:f99a1b2dbcb7a7b30dbfcfc60668e94b4ad53410  ...  The paper proposes NeoEA,
+    an approach that fur...
+
+    19  SP:f99a1b2dbcb7a7b30dbfcfc60668e94b4ad53410  ...  Entity alignment plays an
+    important role in im...
+
+    20  SP:f99a1b2dbcb7a7b30dbfcfc60668e94b4ad53410  ...  In the paper, the authors
+    propose to minimize ...
+
+    21  SP:0e42de72d10040289283516ec1bd324788f7d371  ...  The paper proposed to adopt
+    differentiable net...
+
+    22  SP:0e42de72d10040289283516ec1bd324788f7d371  ...  This paper presents a method
+    called SACoD to d...
+
+    23  SP:0e42de72d10040289283516ec1bd324788f7d371  ...  SACoD presents a novel attempt
+    to integrate th...
+
+    24  SP:493afcfa3fd64967785928ba3acecf3ffa6ce579  ...  The authors introduce a
+    novel method for non-n...
+
+    25  SP:493afcfa3fd64967785928ba3acecf3ffa6ce579  ...  The authors present a matrix
+    factorization mod...
+
+    26  SP:493afcfa3fd64967785928ba3acecf3ffa6ce579  ...  This paper proposes a NMF
+    formulation ||A-FF^T...
+
+    27  SP:08ae056f269c731b92b5a3d59e18f9ccfc0b703c  ...  Review: This paper proposes
+    data augmentation ...
+
+    28  SP:08ae056f269c731b92b5a3d59e18f9ccfc0b703c  ...  In this paper, the authors
+    design a data-augme...
+
+    29  SP:08ae056f269c731b92b5a3d59e18f9ccfc0b703c  ...  This paper presents a method
+    to use data augme...
+
+    30  SP:3fdaae674a2b9d437a43d32778437dc7df9c1686  ...  The novelty of the network
+    structure is margin...
+
+    31  SP:3fdaae674a2b9d437a43d32778437dc7df9c1686  ...  This paper considers the
+    problem of order lear...
+
+
+    [32 rows x 3 columns]'

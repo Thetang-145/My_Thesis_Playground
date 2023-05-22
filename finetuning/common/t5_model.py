@@ -99,13 +99,13 @@ class DataModule(LightningDataModule):
         self.train_dataset = MyDataset(
             args = self.args,
             data = self.train_df,
-            tokenizer = self.tokenizer,
+            # tokenizer = self.tokenizer,
             max_input = self.args.max_input
         )
         self.val_dataset = MyDataset(
             args = self.args,
             data = self.val_df,
-            tokenizer = self.tokenizer,
+            # tokenizer = self.tokenizer,
             max_input = self.args.max_input
         )
         
@@ -158,9 +158,9 @@ class T5Model(LightningModule):
         loss, outputs = self(
             input_ids=input_ids, 
             attention_mask=attention_mask, 
-            labels=target_ids, 
-        )
-        
+            target_ids=target_ids,
+            target_attention_mask=target_attention_mask,
+        )        
         self.log("train_loss", loss, prog_bar=True, logger=True)
         return loss
 
