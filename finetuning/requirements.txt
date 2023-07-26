@@ -1,8 +1,0 @@
-transformers
-pandas
-rouge
-
-# up to your os your cuda version
-torch 
-torchvision 
-torchaudio

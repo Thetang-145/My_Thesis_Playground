@@ -1,1 +1,0 @@
-{"rouge1": 0.3149080148070007, "rouge2": 0.06042140442089864, "rougeL": 0.1971344815927313, "epoch": 4, "trainer/global_step": 79, "_timestamp": 1682915216.154729, "_runtime": 213.47837781906128, "_step": 5, "train_loss": 0.9938092827796936, "_wandb": {"runtime": 216}}
